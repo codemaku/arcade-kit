@@ -19,7 +19,7 @@
     }
   },
   "bin": {
-    "arcade-obfuscate": "./bin/arcade-obfuscate.mjs"
+    "arcade-obfuscate": "bin/arcade-obfuscate.mjs"
   },
   "files": [
     "src",
