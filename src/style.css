@@ -1,0 +1,327 @@
+/*! @codemaku/arcade — shared design system. © 2026 Codemaku. All rights reserved.
+ *
+ * Import order:
+ *   import "@codemaku/arcade/style.css";
+ *   import "./style.css";   // game-specific layout + theme overrides
+ *
+ * Everything is driven by the CSS custom properties below. A game can
+ * override any of them in its own stylesheet without touching the base.
+ */
+
+:root {
+  /* dark theme (default). Light overrides live in :root[data-theme="light"]. */
+  --bg: #1b1230;
+  --panel: #2d1b4e;
+  --panel2: #412a6e;
+  --well: #0b0618; /* inset surfaces: inputs, stat tiles, blocks */
+  --line: #0b0618; /* outlines and drop shadows */
+  --ink: #fff4d6;
+  --acc: #ffb400; /* fills */
+  --acc-t: #ffb400; /* accent used as text */
+  --hot: #ff5a36;
+  --hot-t: #ff5a36;
+  --grn: #5cb85c;
+  --grn-t: #9be58f;
+  --water-t: #7fbcff;
+  --scrim: #0b0618d9;
+  --map-bg: #120a24; /* behind maps and charts */
+  /* player colours as text/outlines (canvas drawing uses its own palette) */
+  --p0: #ffb400;
+  --p1: #5cb5ff;
+  --p2: #ff7aa2;
+  --p3: #9be58f;
+  /* lie colours */
+  --lie-tee: #fff4d6;
+  --lie-fairway: #9be58f;
+  --lie-rough: #5cb85c;
+  --lie-sand: #ead28c;
+  --lie-green: #fff;
+  --lie-lake: #7fbcff;
+  --lie-ob: #ff5a36;
+  --lie-tree: #6fc15e;
+  color-scheme: dark;
+
+  --fs-xs: 7px;
+  --fs-sm: 8px;
+  --fs-md: 10px;
+  --fs-lg: 14px;
+  --fs-xl: 20px;
+  --fs-hero: 28px;
+  --gap: 6px;
+  --pad: 8px;
+  --btn-y: 9px;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+:root[data-theme="light"] {
+  /* retro paper: cream pages, ink-purple outlines */
+  --bg: #efe3b8;
+  --panel: #fff6d8;
+  --panel2: #dcc88c;
+  --well: #fffdf0;
+  --line: #1b1230;
+  --ink: #1b1230;
+  --acc-t: #a65a00;
+  --hot-t: #c8321a;
+  --grn-t: #2b7a35;
+  --water-t: #1f6fd1;
+  --scrim: #1b123099;
+  --map-bg: #d9c993;
+  --p0: #a65a00;
+  --p1: #1f6fd1;
+  --p2: #c9306a;
+  --p3: #2b7a35;
+  --lie-tee: #1b1230;
+  --lie-fairway: #2b7a35;
+  --lie-rough: #5f7f1c;
+  --lie-sand: #9a7410;
+  --lie-green: #0e7a55;
+  --lie-lake: #1f6fd1;
+  --lie-ob: #c8321a;
+  --lie-tree: #3d6b1d;
+  color-scheme: light;
+}
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  height: calc(
+    100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+  );
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: var(--fs-md) / 1.6 "Press Start 2P", ui-monospace, Menlo, monospace;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+input {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  font: inherit;
+  font-size: var(--fs-md);
+  white-space: nowrap;
+  background: var(--acc);
+  color: #000;
+  border: 3px solid #000;
+  box-shadow: 0 4px 0 #000;
+  padding: var(--btn-y) 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #000;
+}
+.btn.alt {
+  background: var(--panel2);
+  color: var(--ink);
+}
+.btn.hot {
+  background: var(--hot);
+  color: #fff;
+}
+.btn.on {
+  background: var(--grn);
+  color: #000;
+}
+.btn.mini {
+  padding: 2px 6px;
+  font-size: var(--fs-sm);
+  box-shadow: 0 2px 0 #000;
+}
+.btn[disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.btn:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---------- small shared utilities ---------- */
+.sm {
+  font-size: var(--fs-sm);
+  opacity: 0.75;
+}
+.ic {
+  display: block;
+  width: 30px;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+.big {
+  display: block;
+  width: 80px;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+.ln {
+  text-align: center;
+}
+.ln b {
+  font-weight: 400;
+  color: var(--acc-t);
+}
+
+/* ---------- overlay dialogs ---------- */
+.arcade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--scrim);
+}
+.arcade-overlay .card {
+  width: 100%;
+  max-width: 380px;
+  max-height: 92vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+  background: var(--panel);
+  border: 4px solid #000;
+  box-shadow: 0 6px 0 #000;
+}
+
+/* ---------- number pad ---------- */
+.arcade-pad {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--scrim);
+}
+.arcade-pad .padbox {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--panel);
+  border: 4px solid #000;
+  border-bottom: 0;
+}
+.arcade-pad .pdisp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--well);
+  border: 3px solid #000;
+}
+.arcade-pad .pdisp span {
+  font-size: var(--fs-sm);
+  color: var(--acc-t);
+}
+.arcade-pad .pdisp b {
+  font-size: var(--fs-xl);
+  font-weight: 400;
+  color: var(--ink);
+}
+.arcade-pad .pdisp b.dim {
+  opacity: 0.45;
+}
+.arcade-pad .plr {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.arcade-pad .keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.arcade-pad .keys .btn {
+  padding: 14px 0;
+  font-size: var(--fs-lg);
+}
+.arcade-pad .keys .btn[data-pk="CLR"],
+.arcade-pad .keys .btn[data-pk="DEL"] {
+  font-size: var(--fs-sm);
+}
+.arcade-pad .pact {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+
+/* ---------- responsive token scales ---------- */
+@media (min-width: 700px) and (min-height: 700px) {
+  :root {
+    --fs-xs: 9px;
+    --fs-sm: 10px;
+    --fs-md: 13px;
+    --fs-lg: 20px;
+    --fs-xl: 28px;
+    --fs-hero: 38px;
+    --gap: 10px;
+    --pad: 12px;
+    --btn-y: 14px;
+  }
+  body {
+    font-size: var(--fs-md);
+  }
+  .arcade-overlay .card {
+    max-width: 520px;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --fs-lg: 13px;
+    --fs-xl: 18px;
+    --fs-hero: 22px;
+    --btn-y: 8px;
+  }
+  .arcade-overlay .card {
+    max-height: 96vh;
+    gap: 8px;
+    padding: 10px;
+  }
+  .arcade-pad .padbox {
+    max-width: 620px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    column-gap: 12px;
+  }
+  .arcade-pad .pdisp,
+  .arcade-pad .plr,
+  .arcade-pad .pact {
+    grid-column: 1;
+  }
+  .arcade-pad .keys {
+    grid-column: 2;
+    grid-row: 1 / 4;
+  }
+  .arcade-pad .keys .btn {
+    padding: 8px 0;
+  }
+}
