@@ -10,8 +10,6 @@ purpose.
 
 ```ini
 # .npmrc in the game repo
-@codemaku:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
 save-exact=true
 ```
 
@@ -79,9 +77,8 @@ npm run check
 npm publish
 ```
 
-The package publishes to GitHub Packages because of `publishConfig.registry`.
-Use a PAT with `write:packages` for publishing. Consumers only need
-`read:packages`.
+The package publishes to the public npm registry with `access: public`.
+Run `npm login` first if needed.
 
 ## Layout
 
@@ -99,3 +96,7 @@ KIT.md             the AI-facing API reference
 - Games may override tokens, never fork base components.
 - New shared UI goes in this repo, not in a game repo.
 - Any visual/API change ships through a Changeset and a version bump.
+
+## License
+
+MIT © 2026 Codemaku

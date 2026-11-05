@@ -15,8 +15,7 @@ Subpaths: `.` (runtime), `./style.css`, `./vite`, `./vite` types, `arcade-obfusc
 ## 1. Install and import
 
 ```ini
-@codemaku:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+# .npmrc in the game repo
 save-exact=true
 ```
 
