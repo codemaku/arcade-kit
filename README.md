@@ -6,6 +6,9 @@ helpers, a Vite preset, and a post-build obfuscator.
 One package, versioned once. Every game pins an exact version and upgrades on
 purpose.
 
+> **API reference:** [`KIT.md`](KIT.md) is the full, AI-facing contract for
+> every export and CSS hook. Games consume this package; games never edit it.
+
 ## Install
 
 ```ini
@@ -17,7 +20,11 @@ save-exact=true
 npm install --save-exact @codemaku/arcade@0.1.0
 ```
 
+Requires Node ≥ 18 and Vite ≥ 5 (peer dependency).
+
 ## Use
+
+### Vite preset
 
 ```js
 // vite.config.js
@@ -26,6 +33,12 @@ import { arcade } from "@codemaku/arcade/vite";
 
 export default defineConfig(arcade());
 ```
+
+`arcade()` applies the house defaults — single-file output, terser minify,
+no source maps, inlined CSS/assets — and passes any normal Vite options
+straight through (`{ singlefile: false }` opts out of the single-file bundle).
+
+### Runtime + styles
 
 ```js
 // src/main.js
@@ -38,6 +51,7 @@ import {
   haptic,
   readJSON,
   writeJSON,
+  removeStored,
   createTheme,
   installPWA,
 } from "@codemaku/arcade";
@@ -59,6 +73,28 @@ installPWA({
 });
 ```
 
+Runtime exports at a glance:
+
+| Export | What it does |
+| --- | --- |
+| `$(id)` | `document.getElementById` shorthand |
+| `clamp(v, min, max)` | Numeric clamping |
+| `esc(s)` | HTML-escape values before interpolation |
+| `readJSON` / `writeJSON` / `removeStored` | Safe namespaced localStorage helpers |
+| `haptic(pattern)` | Vibration with iOS fallback |
+| `createTheme(options)` | auto/light/dark switcher, persisted, with `theme-color` meta sync |
+| `installPWA(options)` | Generates a canvas icon + web manifest at runtime |
+
+### Design tokens
+
+`style.css` defines CSS custom properties on `:root` (dark by default) with
+light overrides under `:root[data-theme="light"]` — e.g. `--bg`, `--panel`,
+`--ink`, `--acc`, `--hot`, `--grn`, font sizes `--fs-xs…--fs-hero`, spacing
+`--gap`/`--pad`. Override tokens in your own stylesheet; never fork the base
+components.
+
+### Build scripts
+
 ```json
 // package.json
 {
@@ -69,6 +105,11 @@ installPWA({
 }
 ```
 
+`arcade-obfuscate` post-processes the built single-file HTML (default
+`dist/index.html`), obfuscating inline script blocks and restoring the
+copyright banner. Flags: `[file] [--banner=src/main.js] [--no-banner]`. It
+warns if any `.map` files are left in `dist/`.
+
 ## Publish
 
 ```bash
@@ -78,7 +119,9 @@ npm publish
 ```
 
 The package publishes to the public npm registry with `access: public`.
-Run `npm login` first if needed.
+Run `npm login` first if needed. Releases go through
+[Changesets](https://github.com/changesets/changesets): add a changeset, then
+`npm run release`.
 
 ## Layout
 
