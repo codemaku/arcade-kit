@@ -352,7 +352,8 @@ input:focus-visible {
   padding: 2px 4px;
   border: 2px solid transparent;
   color: var(--acc-t);
-  font-size: var(--fs-md);
+  /* Follow the container so games can size the badge with font-size. */
+  font-size: 1em;
   text-decoration: none;
   touch-action: manipulation;
 }

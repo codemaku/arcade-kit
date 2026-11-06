@@ -164,7 +164,9 @@ installPWA({ name: "Golf", icon: (ctx, s) => drawLogo(ctx, s) });
 
 The logo is a single colour (`currentColor`, which is `--acc-t` inside the
 lockup), so it follows the game's accent and theme. Size it with `font-size` on
-the container (`.arcade-logo` is `2.5em` tall). `drawLogo` draws the framed C on
+the container (`.arcade-logo` is `2.5em` tall, so a `10px` container gives a
+`25px` badge). It inherits the container's size, so reset `h1` and other
+headings (`font-size: inherit` or an explicit size) before mounting it in one. `drawLogo` draws the framed C on
 a solid square with fixed hex colours because canvas cannot read CSS variables.
 Pass `{ b, f, m }` (background, frame, letters) to override.
 
