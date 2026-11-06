@@ -325,3 +325,51 @@ input:focus-visible {
     padding: 8px 0;
   }
 }
+
+/* ---------- brand lockup ---------- */
+.arcade-brand {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em 0.7em;
+  max-width: 100%;
+}
+.arcade-brand .ab-link {
+  white-space: nowrap;
+}
+.arcade-brand .ab-title {
+  font-size: var(--fs-lg);
+  color: var(--ink);
+}
+.arcade-brand .ab-by {
+  font-size: var(--fs-sm);
+  opacity: 0.6;
+}
+.arcade-brand .ab-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1em;
+  padding: 2px 4px;
+  border: 2px solid transparent;
+  color: var(--acc-t);
+  font-size: var(--fs-md);
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.arcade-brand .ab-link:hover {
+  background: var(--panel);
+  border-color: var(--line);
+}
+.arcade-brand .ab-link:active {
+  transform: translateY(1px);
+}
+.arcade-brand .ab-link:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.arcade-logo {
+  width: auto;
+  height: 2.5em;
+  fill: currentColor;
+  image-rendering: pixelated;
+}

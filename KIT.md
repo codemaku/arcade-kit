@@ -26,7 +26,7 @@ npm install --save-exact @codemaku/arcade@0.1.0
 ```js
 import "@codemaku/arcade/style.css";
 import "./style.css"; // game layout + token overrides
-import { $, clamp, esc, haptic, readJSON, writeJSON, createTheme, installPWA } from "@codemaku/arcade";
+import { $, clamp, esc, haptic, readJSON, writeJSON, createTheme, installPWA, mountBrand, drawLogo } from "@codemaku/arcade";
 ```
 
 The Google Font is not bundled. Keep this in the game HTML:
@@ -140,6 +140,35 @@ installPWA({
   },
 });
 ```
+
+### Brand: `mountBrand`, `brandHTML`, `logoSVG`, `drawLogo`, `HUB_URL`
+
+Every game shows the same lockup, **Title by CODEMAKU**, where CODEMAKU is a
+bold pixel wordmark in a frame that links to the hub (`HUB_URL`). Do not
+redraw or restyle the logo in a game. Use these exports.
+
+```html
+<span id="brand"></span>
+```
+
+```js
+mountBrand("brand", { title: "Golf" });       // Golf by [C]odemaku → hub
+mountBrand("brand");                          // bare wordmark
+mountBrand(el, { title: "Golf", newTab: true });
+el.innerHTML = brandHTML({ title: "Golf" });  // markup string only
+el.innerHTML = logoSVG();                     // badge only
+el.innerHTML = logoSVG("mark");               // square C badge
+
+installPWA({ name: "Golf", icon: (ctx, s) => drawLogo(ctx, s) });
+```
+
+The logo is a single colour (`currentColor`, which is `--acc-t` inside the
+lockup), so it follows the game's accent and theme. Size it with `font-size` on
+the container (`.arcade-logo` is `2.5em` tall). `drawLogo` draws the framed C on
+a solid square with fixed hex colours because canvas cannot read CSS variables.
+Pass `{ b, f, m }` (background, frame, letters) to override.
+
+Classes: `.arcade-brand`, `.ab-title`, `.ab-by`, `.ab-link`, `.arcade-logo`.
 
 ---
 

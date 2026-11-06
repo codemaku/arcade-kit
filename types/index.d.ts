@@ -47,3 +47,29 @@ export interface InstallPWAOptions {
 }
 
 export function installPWA(options?: InstallPWAOptions): boolean;
+
+/* ---- brand ---- */
+
+/** Where the Codemaku link points. */
+export const HUB_URL: string;
+/** The sprite wrench-C as an inline SVG string (`.arcade-logo`). */
+export function logoSVG(variant?: "word" | "mark"): string;
+/** Draw the sprite onto a square canvas of `size` px. Colours are fixed hex. */
+export function drawLogo(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  colors?: Partial<Record<"b" | "f" | "m", string>>,
+): void;
+export interface BrandOptions {
+  /** Game name shown before "by". Omit for the bare wordmark. */
+  title?: string;
+  /** Link target. Default `HUB_URL`. */
+  hub?: string;
+  /** Open the hub in a new tab. Default false. */
+  newTab?: boolean;
+}
+export function brandHTML(options?: BrandOptions): string;
+export function mountBrand(
+  target: string | HTMLElement,
+  options?: BrandOptions,
+): HTMLElement | null;

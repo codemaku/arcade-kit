@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b1230" />
+    <title>Codemaku Arcade Kit</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <style>
+      main { height: 100%; overflow: auto; }
+      header.top {
+        position: sticky; top: 0; z-index: 2;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(180deg, var(--panel2), var(--panel));
+        border-bottom: 4px solid var(--line);
+      }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 20px; }
+      h2 { margin: 0; font-size: var(--fs-lg); font-weight: 400; color: var(--acc-t); }
+      .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+      .tile {
+        background: var(--panel); border: 3px solid var(--line); box-shadow: 0 4px 0 var(--line);
+        padding: 14px; display: flex; flex-direction: column; gap: 10px;
+        transition: transform 0.1s;
+      }
+      .tile:hover { transform: translateY(-3px); }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .stage { background: var(--well); border: 3px solid var(--line); padding: 16px; display: grid; gap: 14px; }
+      .sw { display: grid; gap: 4px; font-size: var(--fs-xs); }
+      .sw i { display: block; height: 34px; border: 3px solid var(--line); }
+      .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="top">
+        <span id="hdr"></span>
+        <button class="btn alt mini" id="themeBtn">THEME: AUTO</button>
+      </header>
+
+      <div class="wrap">
+        <section class="tiles">
+          <div class="tile">
+            <h2>Brand</h2>
+            <div class="stage">
+              <div id="b1"></div>
+              <div id="b2" style="font-size: 16px"></div>
+              <div id="b3"></div>
+            </div>
+            <span class="sm">mountBrand("id", { title })</span>
+          </div>
+          <div class="tile">
+            <h2>Buttons</h2>
+            <div class="row">
+              <button class="btn">PLAY</button>
+              <button class="btn alt">OPTIONS</button>
+              <button class="btn hot">QUIT</button>
+              <button class="btn on">ON</button>
+              <button class="btn mini">MINI</button>
+              <button class="btn" disabled>OFF</button>
+            </div>
+          </div>
+          <div class="tile">
+            <h2>Utilities</h2>
+            <span class="sm">.sm small muted text</span>
+            <div class="ln">centred <b>accent</b> line</div>
+            <div class="row">
+              <button class="btn alt" id="hap">HAPTIC</button>
+              <button class="btn alt" id="ovBtn">OVERLAY</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="tile">
+          <h2>Tokens</h2>
+          <div class="swatches" id="sw"></div>
+        </section>
+      </div>
+    </main>
+
+    <div id="ov" class="arcade-overlay">
+      <div class="card">
+        <h2>OVERLAY</h2>
+        <div class="sm">.arcade-overlay + .card</div>
+        <button class="btn hot" id="ovClose">CLOSE</button>
+      </div>
+    </div>
+
+    <script type="module">
+      import "../src/style.css";
+      import { $, haptic, createTheme, mountBrand } from "../src/index.js";
+
+      mountBrand("hdr", { title: "Arcade Kit" });
+      mountBrand("b1", { title: "Golf" });
+      mountBrand("b2", { title: "Pixel Racer" });
+      mountBrand("b3");
+
+      const theme = createTheme({
+        storageKey: "kitdemo_theme",
+        colors: { light: "#efe3b8", dark: "#1b1230" },
+        onChange: (t, pref) => ($("themeBtn").textContent = "THEME: " + pref.toUpperCase()),
+      });
+      $("themeBtn").onclick = () => theme.cycle();
+      $("hap").onclick = () => haptic([30, 40, 30]);
+      $("ovBtn").onclick = () => ($("ov").style.display = "flex");
+      $("ovClose").onclick = () => ($("ov").style.display = "none");
+
+      const tokens = ["bg","panel","panel2","well","ink","acc","hot","grn","scrim","map-bg",
+        "acc-t","hot-t","grn-t","water-t","p0","p1","p2","p3",
+        "lie-tee","lie-fairway","lie-rough","lie-sand","lie-green","lie-lake","lie-ob","lie-tree"];
+      $("sw").innerHTML = tokens
+        .map((t) => `<div class="sw"><i style="background:var(--${t})"></i>--${t}</div>`)
+        .join("");
+    </script>
+  </body>
+</html>

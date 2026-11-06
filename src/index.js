@@ -224,3 +224,7 @@ export function installPWA(options = {}) {
     return false;
   }
 }
+
+/* ---- brand -------------------------------------------------------------- */
+
+export * from "./brand.js";
