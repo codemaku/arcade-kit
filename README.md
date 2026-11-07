@@ -37,6 +37,8 @@ export default defineConfig(arcade());
 `arcade()` applies the house defaults — single-file output, terser minify,
 no source maps, inlined CSS/assets — and passes any normal Vite options
 straight through (`{ singlefile: false }` opts out of the single-file bundle).
+`{ offline: true }` adds a precaching service worker so the game works
+offline after one online visit.
 
 ### Runtime + styles
 
@@ -129,6 +131,8 @@ Run `npm login` first if needed. Releases go through
 src/index.js       runtime helpers
 src/style.css      tokens + base components
 src/vite.js        shared Vite preset
+src/offline.js     offline service worker plugin (writes sw.js at build)
+src/offline-sw.js  the service worker template
 bin/               arcade-obfuscate CLI
 types/             public TypeScript declarations
 KIT.md             the AI-facing API reference

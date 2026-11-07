@@ -48,6 +48,16 @@ export interface InstallPWAOptions {
 
 export function installPWA(options?: InstallPWAOptions): boolean;
 
+/**
+ * Register the offline service worker built by `arcade({ offline: true })`.
+ * Only needed with `offline: { register: false }`. Resolves to null when
+ * service workers are unavailable or registration fails.
+ */
+export function registerOffline(options?: {
+  /** Worker URL. Default `"./sw.js"`. */
+  url?: string;
+}): Promise<ServiceWorkerRegistration | null>;
+
 /* ---- brand ---- */
 
 /** Where the Codemaku link points. */

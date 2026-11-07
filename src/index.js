@@ -225,6 +225,21 @@ export function installPWA(options = {}) {
   }
 }
 
+/**
+ * Register the offline service worker that `arcade({ offline: true })` builds.
+ * The preset already does this for you; call it yourself only with
+ * `offline: { register: false }`. Resolves to the registration, or null where
+ * service workers are unavailable or registration fails (e.g. in `vite dev`).
+ */
+export function registerOffline(options = {}) {
+  const { url = "./sw.js" } = options;
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+    return Promise.resolve(null);
+  const go = () => navigator.serviceWorker.register(url).catch(() => null);
+  if (document.readyState === "complete") return go();
+  return new Promise((done) => addEventListener("load", () => done(go()), { once: true }));
+}
+
 /* ---- brand -------------------------------------------------------------- */
 
 export * from "./brand.js";

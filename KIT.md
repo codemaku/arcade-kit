@@ -5,7 +5,7 @@ It describes every public export and the shared CSS contract. If something is
 not documented here, it is not part of the game API.
 
 Package: `@codemaku/arcade`
-Subpaths: `.` (runtime), `./style.css`, `./vite`, `./vite` types, `arcade-obfuscate` CLI.
+Subpaths: `.` (runtime), `./style.css`, `./vite` (preset and `offline` plugin), `./vite` types, `arcade-obfuscate` CLI.
 
 > Games consume this package. Games never edit it. If a component is missing
 > or broken, report it in the kit repo; do not fork it into the game.
@@ -139,6 +139,18 @@ installPWA({
     // draw pixels...
   },
 });
+```
+
+### `registerOffline(options)`
+
+Registers the offline service worker built by `arcade({ offline: true })`.
+The preset already adds a registration script to every built page, so call
+this only with `offline: { register: false }`. Resolves to the registration,
+or `null` where service workers are unavailable or registration fails (as in
+`vite dev`, which builds no worker).
+
+```js
+registerOffline(); // { url: "./sw.js" } by default
 ```
 
 ### Header: `mountHeader`, `inHub`, `backToHub`
@@ -338,6 +350,7 @@ Defaults:
 - terser with drop_console, toplevel mangle, 3 passes
 - no source maps, CSS inlined, dynamic imports inlined
 - `outDir: "dist"`
+- `offline: false` (see Offline below)
 
 All normal Vite options can be merged in:
 
@@ -350,6 +363,48 @@ export default defineConfig(
   }),
 );
 ```
+
+### Offline
+
+Every game should work offline once it has been opened online. Turn it on in
+the preset:
+
+```js
+export default defineConfig(arcade({ offline: true }));
+```
+
+After `vite build`, the kit writes `dist/sw.js` and adds a small registration
+script to each built HTML page. The worker:
+
+- precaches every file in the output folder (`public/` sounds, icons and the
+  manifest included; `.map` files and files over 10 MB skipped);
+- caches the Google Fonts stylesheets linked from the HTML, and their font
+  files, at install, so the pixel font survives offline after one visit;
+- serves pages network first, falling back to the cache after 3 seconds or
+  when offline; built files and fonts cache first;
+- gets a new version (and a fresh precache) whenever any built file changes,
+  then takes over straight away and deletes every older cache on the site,
+  including ones left by vite-plugin-pwa or hand-written workers.
+
+It never touches localStorage, so saves are unaffected. Inside the hub's
+in-app game view the game's own worker serves it, so a game opened there once
+loads there offline too. A game must have been opened once (in the hub app,
+or on its own site) for its worker to be installed.
+
+Options (`offline: { ... }`): `exclude` (globs or RegExps relative to the
+output folder), `urls` (extra absolute URLs to cache), `fallback` (default
+`"index.html"`), `timeout` (ms, default 3000), `maxFileSize`, `filename`
+(default `"sw.js"`), `register` (default true).
+
+Without the preset, add the plugin yourself:
+
+```js
+import { offline } from "@codemaku/arcade/vite";
+export default defineConfig({ plugins: [react(), offline()] });
+```
+
+Don't add another service worker or vite-plugin-pwa alongside it. A web
+manifest, if the game has one, goes in `public/manifest.webmanifest`.
 
 ## 6. Obfuscation
 

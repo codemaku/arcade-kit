@@ -1,6 +1,6 @@
 {
   "name": "@codemaku/arcade",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Shared pixel-arcade design system, runtime helpers, and Vite preset for Codemaku games.",
   "type": "module",
   "license": "MIT",
@@ -39,7 +39,7 @@
   },
   "scripts": {
     "demo": "vite demo",
-    "check": "node --check src/index.js && node --check src/brand.js && node --check src/header.js && node --check src/vite.js && node --check bin/arcade-obfuscate.mjs",
+    "check": "node --check src/index.js && node --check src/brand.js && node --check src/header.js && node --check src/vite.js && node --check src/offline.js && node --check src/offline-sw.js && node --check bin/arcade-obfuscate.mjs",
     "prepublishOnly": "npm run check",
     "release": "changeset publish"
   },

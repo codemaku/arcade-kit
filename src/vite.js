@@ -1,6 +1,9 @@
 /*! @codemaku/arcade/vite — shared Vite preset. © 2026 Codemaku. */
 
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { offline as offlinePlugin } from "./offline.js";
+
+export { offlinePlugin as offline };
 
 /**
  * Build a Vite config with the house defaults:
@@ -11,11 +14,13 @@ import { viteSingleFile } from "vite-plugin-singlefile";
  *   import { arcade } from "@codemaku/arcade/vite";
  *   export default defineConfig(arcade());
  *
- * Pass any normal Vite options through the same object.
+ * Pass any normal Vite options through the same object. `offline: true` (or
+ * an options object, see `offline()`) adds a precaching service worker.
  */
 export function arcade(options = {}) {
   const {
     singlefile = true,
+    offline = false,
     plugins = [],
     build = {},
     ...config
@@ -31,6 +36,7 @@ export function arcade(options = {}) {
         ? [viteSingleFile({ removeViteModuleLoader: true })]
         : []),
       ...plugins,
+      ...(offline ? [offlinePlugin(offline === true ? {} : offline)] : []),
     ],
     build: {
       target: "es2020",

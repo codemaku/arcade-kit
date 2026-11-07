@@ -1,5 +1,13 @@
 # @codemaku/arcade
 
+## 0.3.3
+
+### Patch Changes
+
+- Add offline support. `arcade({ offline: true })` writes a precaching service worker (`sw.js`) into the build and registers it from every built page, so a game (or the hub) works offline after one online visit. It precaches every built file, including `public/` files such as sounds and icons, and the Google Fonts stylesheets the HTML links to with their font files. Pages are network first with a 3-second fallback to the cache, so deploys still show up straight away. Works with single-file builds and inside the hub's in-app game frame.
+- Add `offline(options)` to `@codemaku/arcade/vite` for projects that don't use the preset (`plugins: [react(), offline()]`), and `registerOffline()` to the runtime for `offline: { register: false }`.
+- The worker owns the site's Cache Storage: on activate it deletes caches from older builds and from previous workers (vite-plugin-pwa/workbox, hand-written ones). localStorage is never touched.
+
 ## 0.3.2
 
 ### Patch Changes
