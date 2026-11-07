@@ -26,7 +26,7 @@ npm install --save-exact @codemaku/arcade@0.1.0
 ```js
 import "@codemaku/arcade/style.css";
 import "./style.css"; // game layout + token overrides
-import { $, clamp, esc, haptic, readJSON, writeJSON, createTheme, installPWA, mountBrand, drawLogo } from "@codemaku/arcade";
+import { $, clamp, esc, haptic, readJSON, writeJSON, createTheme, installPWA, mountBrand, mountHeader, drawLogo } from "@codemaku/arcade";
 ```
 
 The Google Font is not bundled. Keep this in the game HTML:
@@ -103,7 +103,7 @@ Sets up the auto/light/dark switcher. It writes
 const theme = createTheme({
   storageKey: "mygame_theme",        // default "arcade_theme"
   themes: ["auto", "light", "dark"], // cycle order
-  defaultTheme: "auto",
+  defaultTheme: "light",           // default "light"
   colors: { light: "#efe3b8", dark: "#1b1230" }, // meta theme-color
   onChange(theme, pref) {
     // update canvas palettes, sprites, etc.
@@ -140,6 +140,43 @@ installPWA({
   },
 });
 ```
+
+### Header: `mountHeader`, `inHub`, `backToHub`
+
+Every game starts with the same header, so the way back to the hub and the
+settings are always in the same place:
+
+`[CODEMAKU]  GAME NAME ......  [INSTALL] [game buttons] [SND ON] [LIGHT]`
+
+```html
+<div id="header"></div>
+```
+
+```js
+const header = mountHeader("header", {
+  title: "Box Challenge",
+  theme,                                   // from createTheme; omit to hide
+  sound: { get: () => soundOn, set: (on) => { soundOn = on; /* save */ } }, // omit if silent
+  actions: [{ label: "MENU", onClick: openMenu }],  // optional
+  themeLabels: { auto: "Auto", light: "Paper", dark: "Ink" }, // optional
+});
+header.update();              // redraw after theme/sound changed elsewhere
+header.update({ actions });   // or with new options
+```
+
+The CODEMAKU badge calls `backToHub()`. Inside the hub's home-screen app the
+game runs in a full-screen frame; there it asks the hub to close the frame
+(the game stays loaded, so reopening it resumes). Anywhere else it opens the
+hub, in a new tab by default (`newTab: false` to leave the game instead).
+INSTALL appears only when the game isn't already installed, isn't running
+inside the hub, and the browser can install it: Chrome/Android get the real
+install prompt, iPhone/iPad get the Share → Add to Home Screen steps.
+`install: false` hides it. `isInstalled()`, `canInstall()` and
+`promptInstall()` are exported too.
+
+Don't add another hub link, install button, or put settings elsewhere.
+
+Classes: `.arcade-header`, `.ah-hub`, `.ah-title`, `.ah-tools`, `.ah-sound`, `.ah-theme`.
 
 ### Brand: `mountBrand`, `brandHTML`, `logoSVG`, `drawLogo`, `HUB_URL`
 

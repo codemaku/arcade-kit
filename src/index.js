@@ -112,7 +112,7 @@ export function createTheme(options = {}) {
   const {
     storageKey = "arcade_theme",
     themes = DEFAULT_THEMES,
-    defaultTheme = "auto",
+    defaultTheme = "light",
     colors = {},
     onChange,
   } = options;
@@ -228,3 +228,4 @@ export function installPWA(options = {}) {
 /* ---- brand -------------------------------------------------------------- */
 
 export * from "./brand.js";
+export * from "./header.js";

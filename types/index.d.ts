@@ -15,7 +15,7 @@ export interface CreateThemeOptions {
   storageKey?: string;
   /** Options in cycle order. Default `["auto", "light", "dark"]`. */
   themes?: string[];
-  /** Preference used when nothing valid is stored. Default `"auto"`. */
+  /** Preference used when nothing valid is stored. Default `"light"`. */
   defaultTheme?: string;
   /** Map resolved theme → `<meta name="theme-color">` value. */
   colors?: Record<string, string>;
@@ -73,3 +73,53 @@ export function mountBrand(
   target: string | HTMLElement,
   options?: BrandOptions,
 ): HTMLElement | null;
+
+/* ---- header ---- */
+
+/** True when the game is running inside the hub's in-app game view. */
+export function inHub(): boolean;
+/** Close the hub's game view, or open the hub (in a new tab when `newTab`). */
+export function backToHub(options?: { hub?: string; newTab?: boolean }): void;
+
+/** True when running as an installed home-screen app. */
+export function isInstalled(): boolean;
+/** Not installed, not in the hub, and the browser can install. */
+export function canInstall(): boolean;
+/** Show the browser's install prompt, or the iOS Add to Home Screen steps. */
+export function promptInstall(): Promise<void>;
+
+export interface HeaderAction {
+  label: string;
+  onClick: (e: MouseEvent) => void;
+  ariaLabel?: string;
+  /** Use the hot (accent red) button style. */
+  hot?: boolean;
+}
+export interface HeaderOptions {
+  /** Game name shown next to the CODEMAKU badge. */
+  title?: string;
+  /** Theme controller from `createTheme`. Omit to hide the theme button. */
+  theme?: ThemeController;
+  /** Button labels per theme preference. Default: the preference itself. */
+  themeLabels?: Record<string, string>;
+  /** Sound toggle. Omit to hide the sound button. */
+  sound?: { get(): boolean; set(on: boolean): void };
+  /** Extra game buttons, shown before sound and theme. */
+  actions?: HeaderAction[];
+  /** Show INSTALL when installable. Default true. */
+  install?: boolean;
+  /** Hub URL. Default `HUB_URL`. */
+  hub?: string;
+  /** Outside the hub's game view, open the hub in a new tab. Default true. */
+  newTab?: boolean;
+}
+export interface HeaderController {
+  readonly el: HTMLElement;
+  /** Redraw, optionally with new options merged in. */
+  update(options?: HeaderOptions): void;
+  destroy(): void;
+}
+export function mountHeader(
+  target: string | HTMLElement,
+  options?: HeaderOptions,
+): HeaderController | null;

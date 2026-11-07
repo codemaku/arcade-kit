@@ -374,3 +374,84 @@ input:focus-visible {
   fill: currentColor;
   image-rendering: pixelated;
 }
+
+/* ---------- shared game header (mountHeader) ---------- */
+.arcade-header {
+  /* above .arcade-overlay dialogs, so the way home and settings stay reachable */
+  position: relative;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.arcade-header .ah-hub {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border: 2px solid transparent;
+  color: var(--acc-t);
+  font-size: 8px; /* badge is 2.5em tall = 20px */
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.arcade-header .ah-hub:hover {
+  background: var(--panel);
+  border-color: var(--line);
+}
+.arcade-header .ah-hub:active {
+  transform: translateY(1px);
+}
+.arcade-header .ah-hub:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.arcade-header .ah-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.arcade-header .ah-tools {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
+}
+.arcade-header .ah-hub > span {
+  display: inline-flex;
+}
+.arcade-header .ah-mark {
+  display: none !important;
+}
+@media (max-width: 480px) {
+  .arcade-header .ah-word {
+    display: none !important;
+  }
+  .arcade-header .ah-mark {
+    display: inline-flex !important;
+  }
+}
+.arcade-header .ah-title + .ah-tools {
+  margin-left: 0;
+}
+.arcade-overlay.ah-install {
+  z-index: 1000;
+}
+.arcade-overlay.ah-install h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 400;
+  color: var(--acc-t);
+}
+.arcade-overlay.ah-install p {
+  margin: 0;
+  text-align: left;
+}
