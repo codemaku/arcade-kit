@@ -128,6 +128,7 @@ function showIOSInstall(name) {
       ...(name ? [`To add ${name} to your home screen:`] : []),
       "1. Tap the Share button in Safari.",
       '2. Choose "Add to Home Screen".',
+      "It keeps working offline.",
     ],
     [{ label: "OK" }],
   );
@@ -158,7 +159,10 @@ export function showInstall({ name = "", hub = null } = {}) {
     url.searchParams.set("install", "");
     dialog(
       "INSTALL",
-      ["Install Codemaku once and play every game, this one too, from your home screen."],
+      [
+        "Install Codemaku once and play every game, this one too, from your home screen.",
+        "Either way, games you have opened keep working offline.",
+      ],
       [
         { label: "INSTALL CODEMAKU", hot: true, onClick: () => location.assign(url.href.replace(/=$/, "")) },
         { label: name ? `JUST ${name.toUpperCase()}` : "JUST THIS GAME", alt: true, onClick: () => promptInstall(name) },
@@ -169,7 +173,7 @@ export function showInstall({ name = "", hub = null } = {}) {
   }
   if (isIOS()) return showIOSInstall(name);
   if (installPrompt)
-    dialog("INSTALL", [`Add ${name || "this app"} to your home screen?`], [
+    dialog("INSTALL", [`Add ${name || "this app"} to your home screen?`, "It keeps working offline."], [
       { label: "INSTALL", hot: true, onClick: () => promptInstall(name) },
       { label: "NOT NOW", alt: true },
     ]);
