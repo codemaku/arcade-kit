@@ -14,10 +14,20 @@ export function inHub() {
   }
 }
 
+/** True when this page was opened from the hub (by its PLAY button). */
+export function cameFromHub(hub = HUB_URL) {
+  try {
+    return new URL(document.referrer).origin === new URL(hub).origin;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Go back to the hub. Inside the hub's game view this asks the hub to close
  * the frame (the game stays loaded, so reopening it resumes where you were).
- * Otherwise it opens the hub, in a new tab when `newTab` is set.
+ * Opened from the hub, it goes back in the same tab, so the hub can play its
+ * lean-out. Otherwise it opens the hub, in a new tab when `newTab` is set.
  */
 export function backToHub({ hub = HUB_URL, newTab = false } = {}) {
   if (inHub()) {
@@ -25,7 +35,7 @@ export function backToHub({ hub = HUB_URL, newTab = false } = {}) {
     window.parent.postMessage({ type: "codemaku:close" }, "*");
     return;
   }
-  if (newTab) window.open(hub, "_blank", "noopener");
+  if (newTab && !cameFromHub(hub)) window.open(hub, "_blank", "noopener");
   else location.assign(hub);
 }
 

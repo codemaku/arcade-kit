@@ -1,5 +1,11 @@
 # @codemaku/arcade
 
+## 0.3.1
+
+### Patch Changes
+
+- The header's CODEMAKU badge goes back to the hub in the same tab when the game was opened from the hub, so the hub plays its lean-out instead of booting fresh in a new tab. Adds `cameFromHub()`.
+
 ## 0.3.0
 
 ### Minor Changes

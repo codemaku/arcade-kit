@@ -167,7 +167,9 @@ header.update({ actions });   // or with new options
 The CODEMAKU badge calls `backToHub()`. Inside the hub's home-screen app the
 game runs in a full-screen frame; there it asks the hub to close the frame
 (the game stays loaded, so reopening it resumes). Anywhere else it opens the
-hub, in a new tab by default (`newTab: false` to leave the game instead).
+hub: in the same tab when the game was opened from the hub (so the hub
+plays its lean-out), otherwise in a new tab by default (`newTab: false` to
+leave the game instead).
 INSTALL appears only when the game isn't already installed, isn't running
 inside the hub, and the browser can install it: Chrome/Android get the real
 install prompt, iPhone/iPad get the Share → Add to Home Screen steps.

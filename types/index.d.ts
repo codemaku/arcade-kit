@@ -78,6 +78,8 @@ export function mountBrand(
 
 /** True when the game is running inside the hub's in-app game view. */
 export function inHub(): boolean;
+/** True when this page was opened from the hub. */
+export function cameFromHub(hub?: string): boolean;
 /** Close the hub's game view, or open the hub (in a new tab when `newTab`). */
 export function backToHub(options?: { hub?: string; newTab?: boolean }): void;
 
