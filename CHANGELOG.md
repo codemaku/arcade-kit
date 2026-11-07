@@ -1,5 +1,13 @@
 # @codemaku/arcade
 
+## 0.3.2
+
+### Patch Changes
+
+- Fix the same-tab return to the hub: `codemaku.com` redirects to `www.codemaku.com`, so `cameFromHub()` now treats the two as the same site. Without this the badge still opened a new tab and the hub never leaned out.
+- INSTALL in a game header now offers the hub first ("INSTALL CODEMAKU", every game in one app) and installing just this game second. `offerHub: false` skips the hub choice. The hub link adds `?install` so the hub can open its own install steps.
+- Add `showInstall({ name, hub })` and `onInstallChange(fn)`; `promptInstall(name)` takes the app's name for the iOS steps.
+
 ## 0.3.1
 
 ### Patch Changes

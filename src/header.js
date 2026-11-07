@@ -14,10 +14,16 @@ export function inHub() {
   }
 }
 
+// codemaku.com redirects to www.codemaku.com, so treat the two as one site.
+const siteOf = (url) => {
+  const u = new URL(url);
+  return `${u.protocol}//${u.host.replace(/^www\./, "")}`;
+};
+
 /** True when this page was opened from the hub (by its PLAY button). */
 export function cameFromHub(hub = HUB_URL) {
   try {
-    return new URL(document.referrer).origin === new URL(hub).origin;
+    return siteOf(document.referrer) === siteOf(hub);
   } catch {
     return false;
   }
@@ -58,6 +64,12 @@ const isIOS = () =>
 let installPrompt = null;
 const installListeners = new Set();
 const installChanged = () => installListeners.forEach((fn) => fn());
+
+/** Call `fn` whenever installing becomes possible or stops being possible. Returns an unsubscribe. */
+export function onInstallChange(fn) {
+  installListeners.add(fn);
+  return () => installListeners.delete(fn);
+}
 if (typeof window !== "undefined") {
   // Caught at import so the event isn't missed before the header mounts.
   addEventListener("beforeinstallprompt", (e) => {
@@ -79,29 +91,50 @@ export function canInstall() {
   return !isInstalled() && !inHub() && (!!installPrompt || isIOS());
 }
 
-function showIOSInstall() {
-  const ov = el("div", "arcade-overlay ah-install", { role: "dialog", "aria-modal": "true", "aria-label": "Install" });
+// A small kit dialog: title, lines of text, then buttons [{ label, hot, onClick }].
+function dialog(title, lines, buttons) {
+  const ov = el("div", "arcade-overlay ah-install", { role: "dialog", "aria-modal": "true", "aria-label": title });
   ov.style.display = "flex";
   const card = el("div", "card");
   const h = el("h2");
-  h.textContent = "INSTALL";
-  const p1 = el("p");
-  p1.textContent = "1. Tap the Share button in Safari.";
-  const p2 = el("p");
-  p2.textContent = '2. Choose "Add to Home Screen".';
-  const ok = el("button", "btn", { type: "button" });
-  ok.textContent = "OK";
+  h.textContent = title;
+  card.append(h);
+  for (const line of lines) {
+    const p = el("p");
+    p.textContent = line;
+    card.append(p);
+  }
   const close = () => ov.remove();
-  ok.addEventListener("click", close);
+  for (const b of buttons) {
+    const btn = el("button", `btn${b.hot ? " hot" : b.alt ? " alt" : ""}`, { type: "button" });
+    btn.textContent = b.label;
+    btn.addEventListener("click", () => {
+      close();
+      b.onClick?.();
+    });
+    card.append(btn);
+  }
   ov.addEventListener("click", (e) => e.target === ov && close());
-  card.append(h, p1, p2, ok);
+  ov.addEventListener("keydown", (e) => e.key === "Escape" && close());
   ov.append(card);
   document.body.append(ov);
-  ok.focus();
+  card.querySelector("button")?.focus();
 }
 
-/** Show the browser's install prompt, or the iOS steps. */
-export async function promptInstall() {
+function showIOSInstall(name) {
+  dialog(
+    "INSTALL",
+    [
+      ...(name ? [`To add ${name} to your home screen:`] : []),
+      "1. Tap the Share button in Safari.",
+      '2. Choose "Add to Home Screen".',
+    ],
+    [{ label: "OK" }],
+  );
+}
+
+/** Show the browser's install prompt, or the iOS steps. Needs a tap to have just happened. */
+export async function promptInstall(name) {
   if (installPrompt) {
     const e = installPrompt;
     installPrompt = null;
@@ -109,7 +142,37 @@ export async function promptInstall() {
     installChanged();
     return;
   }
-  if (isIOS()) showIOSInstall();
+  if (isIOS()) showIOSInstall(name);
+}
+
+/**
+ * The INSTALL flow. With `hub`, offer the hub first (every game in one app),
+ * with installing just this game as the second choice. Without it, install
+ * this page: the iOS steps, or a dialog whose button opens the browser's
+ * prompt (the prompt needs a tap, so it can't open by itself).
+ */
+export function showInstall({ name = "", hub = null } = {}) {
+  if (isInstalled() || inHub()) return;
+  if (hub) {
+    const url = new URL(hub);
+    url.searchParams.set("install", "");
+    dialog(
+      "INSTALL",
+      ["Install Codemaku once and play every game, this one too, from your home screen."],
+      [
+        { label: "INSTALL CODEMAKU", hot: true, onClick: () => location.assign(url.href.replace(/=$/, "")) },
+        { label: name ? `JUST ${name.toUpperCase()}` : "JUST THIS GAME", alt: true, onClick: () => promptInstall(name) },
+        { label: "CANCEL", alt: true },
+      ],
+    );
+    return;
+  }
+  if (isIOS()) return showIOSInstall(name);
+  if (installPrompt)
+    dialog("INSTALL", [`Add ${name || "this app"} to your home screen?`], [
+      { label: "INSTALL", hot: true, onClick: () => promptInstall(name) },
+      { label: "NOT NOW", alt: true },
+    ]);
 }
 
 const el = (tag, cls, attrs = {}) => {
@@ -127,7 +190,8 @@ const el = (tag, cls, attrs = {}) => {
  * - `sound`: `{ get(): boolean, set(on: boolean): void }`. Omit to hide it.
  * - `actions`: extra game buttons, `{ label, onClick, ariaLabel?, hot? }`.
  * - INSTALL shows when the game isn't installed or inside the hub and the
- *   browser can install it (`install: false` to never show it).
+ *   browser can install it (`install: false` to never show it). It offers the
+ *   hub first, then just this game (`offerHub: false` to skip the hub).
  *
  * Returns `{ el, update(options?), destroy() }`. Call `update()` after the
  * theme or sound changes from somewhere else, or pass new options (for
@@ -162,7 +226,9 @@ export function mountHeader(target, options = {}) {
     if (opts.install !== false && canInstall()) {
       const b = el("button", "btn mini ah-install-btn", { type: "button", "aria-label": "Install to home screen" });
       b.textContent = "INSTALL";
-      b.addEventListener("click", () => promptInstall());
+      b.addEventListener("click", () =>
+        showInstall({ name: opts.title, hub: opts.offerHub === false ? null : opts.hub }),
+      );
       tools.append(b);
     }
 

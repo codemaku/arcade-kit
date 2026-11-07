@@ -171,10 +171,14 @@ hub: in the same tab when the game was opened from the hub (so the hub
 plays its lean-out), otherwise in a new tab by default (`newTab: false` to
 leave the game instead).
 INSTALL appears only when the game isn't already installed, isn't running
-inside the hub, and the browser can install it: Chrome/Android get the real
-install prompt, iPhone/iPad get the Share → Add to Home Screen steps.
-`install: false` hides it. `isInstalled()`, `canInstall()` and
-`promptInstall()` are exported too.
+inside the hub, and the browser can install it. Tapping it offers two
+choices: **INSTALL CODEMAKU** (the hub, every game in one app; it opens the
+hub with `?install`, which shows the hub's install steps) and **JUST THIS
+GAME** (Chrome/Android get the real install prompt, iPhone/iPad get the
+Share → Add to Home Screen steps). `offerHub: false` skips the hub choice,
+`install: false` hides the button. `isInstalled()`, `canInstall()`,
+`promptInstall(name)`, `showInstall({ name, hub })` and `onInstallChange(fn)`
+are exported too.
 
 Don't add another hub link, install button, or put settings elsewhere.
 

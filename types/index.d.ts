@@ -87,8 +87,15 @@ export function backToHub(options?: { hub?: string; newTab?: boolean }): void;
 export function isInstalled(): boolean;
 /** Not installed, not in the hub, and the browser can install. */
 export function canInstall(): boolean;
-/** Show the browser's install prompt, or the iOS Add to Home Screen steps. */
-export function promptInstall(): Promise<void>;
+/** Show the browser's install prompt, or the iOS Add to Home Screen steps. Call from a tap. */
+export function promptInstall(name?: string): Promise<void>;
+/**
+ * The INSTALL flow. With `hub`, offers the hub first and just this app second.
+ * Without it, shows the iOS steps or a dialog that opens the browser's prompt.
+ */
+export function showInstall(options?: { name?: string; hub?: string | null }): void;
+/** Called whenever installing becomes possible or not. Returns an unsubscribe. */
+export function onInstallChange(fn: () => void): () => void;
 
 export interface HeaderAction {
   label: string;
@@ -110,6 +117,8 @@ export interface HeaderOptions {
   actions?: HeaderAction[];
   /** Show INSTALL when installable. Default true. */
   install?: boolean;
+  /** INSTALL offers the hub first (every game in one app). Default true. */
+  offerHub?: boolean;
   /** Hub URL. Default `HUB_URL`. */
   hub?: string;
   /** Outside the hub's game view, open the hub in a new tab. Default true. */

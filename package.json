@@ -1,6 +1,6 @@
 {
   "name": "@codemaku/arcade",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Shared pixel-arcade design system, runtime helpers, and Vite preset for Codemaku games.",
   "type": "module",
   "license": "MIT",
