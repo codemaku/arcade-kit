@@ -1,5 +1,11 @@
 # @codemaku/arcade
 
+## 0.4.0
+
+### Minor Changes
+
+- Add challenge links: "same round, beat my score" links that live entirely in the URL. `readChallenge`, `challengeURL`, `clearChallenge`, `seededRandom`, `newSeed`, `challengeOutcome`, `showChallengeIntro` (the CHALLENGE! dialog when a link is opened) and `offerChallenge` (name field, then the share sheet or copy to clipboard). The challenger's name is shared across games as `arcade_name`.
+
 ## 0.3.3
 
 ### Patch Changes

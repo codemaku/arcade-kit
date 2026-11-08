@@ -196,6 +196,38 @@ Don't add another hub link, install button, or put settings elsewhere.
 
 Classes: `.arcade-header`, `.ah-hub`, `.ah-title`, `.ah-tools`, `.ah-sound`, `.ah-theme`.
 
+### Challenge links: `readChallenge`, `offerChallenge`, `seededRandom`
+
+"Same round, beat my score" links. Everything lives in the link
+(`?c=<base64url JSON>`); nothing is sent to a server. Every round must be
+built from a seed so it can be replayed exactly:
+
+```js
+import { readChallenge, clearChallenge, showChallengeIntro, offerChallenge,
+  challengeOutcome, seededRandom, newSeed } from "@codemaku/arcade";
+
+const ch = readChallenge(); // { s, n, p, ...game fields } or null
+if (ch) showChallengeIntro({ challenge: ch, goal: `${ch.n || "THEY"} scored ${ch.p}.`, onPlay: () => start(ch) });
+
+function start(ch) {
+  const seed = ch?.s ?? newSeed();
+  const rand = seededRandom(seed);   // use for everything that shapes the round
+  // ... play; at the end:
+  const result = ch && challengeOutcome(score, ch.p);          // "won" | "tied" | "lost"
+  // CHALLENGE A FRIEND button:
+  offerChallenge({ data: { s: seed, p: score, l: level }, text: (n) => `${n} scored ${score}. Beat it?` });
+}
+```
+
+- `seededRandom(seed)` is a drop-in for `Math.random`; same seed, same numbers everywhere.
+- `readChallenge()` checks `s`, `p` and cleans `n`. Validate your own fields.
+- `clearChallenge()` drops `?c` from the address bar once the challenge is done.
+- `offerChallenge` asks for a name (saved across games as `arcade_name`), then
+  opens the share sheet, or copies the link where there is none.
+- `challengeOutcome(mine, theirs, { lower: true })` for lower-is-better scores.
+- `challengeURL(data)`, `shareLink({ url, text })`, `challengeName()`, `setChallengeName()` are exported too.
+- Escape `ch.n` (`esc`) before putting it in HTML.
+
 ### Brand: `mountBrand`, `brandHTML`, `logoSVG`, `drawLogo`, `HUB_URL`
 
 Every game shows the same lockup, **Title by CODEMAKU**, where CODEMAKU is a

@@ -144,3 +144,48 @@ export function mountHeader(
   target: string | HTMLElement,
   options?: HeaderOptions,
 ): HeaderController | null;
+
+/* ---- challenge links ---- */
+
+/** A challenge decoded from a link: seed, sender name, score, plus game fields. */
+export interface Challenge {
+  /** Round seed. */
+  s: number;
+  /** Who set the challenge (cleaned; may be ""). */
+  n: string;
+  /** Their score. */
+  p: number;
+  [field: string]: unknown;
+}
+export function newSeed(): number;
+/** Repeatable generator (mulberry32), drop-in for Math.random. */
+export function seededRandom(seed: number | string): () => number;
+export function cleanName(name: unknown): string;
+export function readChallenge(options?: { param?: string; url?: string }): Challenge | null;
+export function clearChallenge(options?: { param?: string }): void;
+export function challengeURL(
+  data: { s: number; p: number; n?: string; [field: string]: unknown },
+  options?: { param?: string; base?: string },
+): string;
+export function challengeName(): string;
+export function setChallengeName(name: string): void;
+export function shareLink(options: { url: string; text?: string; title?: string }): Promise<"shared" | "copied" | "cancelled" | "failed">;
+export function challengeOutcome(mine: number, theirs: number, options?: { lower?: boolean }): "won" | "tied" | "lost";
+export interface ChallengeDialog {
+  close(): void;
+  say(text: string): void;
+}
+export function showChallengeIntro(options: {
+  challenge: Challenge;
+  goal?: string;
+  onPlay?: () => void;
+  onSkip?: () => void;
+}): ChallengeDialog;
+export function offerChallenge(options: {
+  data: { s: number; p: number; [field: string]: unknown };
+  text?: string | ((name: string) => string);
+  /** Prefill for the name field. Default: the saved name. */
+  name?: string;
+  title?: string;
+  lines?: string[];
+}): ChallengeDialog;
