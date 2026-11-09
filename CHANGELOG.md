@@ -1,6 +1,6 @@
 # @codemaku/arcade
 
-## Unreleased
+## 0.5.0
 
 ### Minor Changes
 
