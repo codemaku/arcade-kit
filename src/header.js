@@ -1,6 +1,7 @@
 /*! @codemaku/arcade/header — the shared game header. © 2026 Codemaku. */
 
 import { HUB_URL, logoSVG } from "./brand.js";
+import { showProgress } from "./players.js";
 
 /**
  * True when this game is running inside the Codemaku hub's in-app game view
@@ -193,6 +194,8 @@ const el = (tag, cls, attrs = {}) => {
  * - `theme`: a controller from `createTheme`. Omit to hide the theme button.
  * - `sound`: `{ get(): boolean, set(on: boolean): void }`. Omit to hide it.
  * - `actions`: extra game buttons, `{ label, onClick, ariaLabel?, hot? }`.
+ * - `progress`: the game's slug (as given to `submitScore`). Adds PROGRESS,
+ *   which opens MY PROGRESS for this game.
  * - INSTALL shows when the game isn't installed or inside the hub and the
  *   browser can install it (`install: false` to never show it). It offers the
  *   hub first, then just this game (`offerHub: false` to skip the hub).
@@ -241,6 +244,13 @@ export function mountHeader(target, options = {}) {
       b.textContent = a.label;
       if (a.ariaLabel) b.setAttribute("aria-label", a.ariaLabel);
       b.addEventListener("click", a.onClick);
+      tools.append(b);
+    }
+
+    if (opts.progress) {
+      const b = el("button", "btn mini alt ah-progress", { type: "button", "aria-label": "My progress in this game" });
+      b.textContent = "PROGRESS";
+      b.addEventListener("click", () => showProgress({ game: opts.progress, title: opts.title }));
       tools.append(b);
     }
 
