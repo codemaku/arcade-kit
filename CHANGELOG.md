@@ -1,5 +1,23 @@
 # @codemaku/arcade
 
+## 0.6.0
+
+### Minor Changes
+
+- Add scores: one result per round, with personal and village records that live on the Codemaku API.
+
+  - `submitScore(result, { player })` scores a finished round: one `skill` (the measure MY PROGRESS shows), an optional `board` (a course, level or mode; records only compare on the same board) and `details` (extra numbers shown with the round, never their own measure). Returns `{ personalBest, previous, villageBest }` straight away, offline too.
+  - `getRecords`, `listRecords` (device cache, instant) and `loadRecords` (refresh from the server) give `{ me, village }` per board. Records survive cleared or short-lived storage, such as a game in the hub app's frame on iPhone.
+  - `mountRecords(el, { game, skill, board, format })`: a ready-made MY BEST / VILLAGE BEST panel that keeps itself up to date. `onRecordsChange(fn)`.
+  - `pickPlayer({ exclude, onPick })`: choose who sits in Player 2's seat: a player on this device, a new player made right there (without switching who's playing on the device), or a guest.
+  - `createPlayer({ makeCurrent: false })`. `record()` accepts `board` and `details`. `playerApi()` for low-level API calls.
+  - MY PROGRESS and the village show one stat per game.
+  - Players on the same device join each other's village automatically (once per pair, so an unfriend sticks). Needs the API's `POST /v1/friends/device`.
+  - Faster sign-up: WHO'S PLAYING? asks for just a name (a free colour is picked; change it on the player card), or I PLAY ON ANOTHER DEVICE. Player 2's picker works the same way.
+  - Signing in another device: the new device shows a 4-character code for 5 minutes; on a signed-in device, the player card's SIGN IN ANOTHER DEVICE approves it (`startLink`, `approveLink`). Replaces typing an 8-character pair code on the new device.
+  - Backup email: save one from the player card (verified with a 6-digit code). On a new device, USE MY BACKUP EMAIL brings back every player saved with it, so one parent's email covers the family (`setBackupEmail`, `verifyBackupEmail`, `removeBackupEmail`, `recoverByEmail`, `claimByEmail`). Only a hash of the address is stored. Recovery codes still work.
+  - Online play against your village: `showOnlinePlay({ game, newOptions, onOpen })` (YOUR TURN, invites, THEIR TURN, NEW GAME from your village, finished games with your head-to-head record), and `createMatch`, `listMatches`, `getMatch`, `acceptMatch`, `declineMatch`, `sendMove`, `resignMatch`, `watchMatch` (live while both are on the page), `waitingOnMe`. The API checks every move with the game's rules; gomoku first.
+
 ## 0.5.0
 
 ### Minor Changes

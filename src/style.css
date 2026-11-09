@@ -611,3 +611,81 @@ input:focus-visible {
 .arcade-players .ap-friend .ap-name {
   flex: 1;
 }
+
+/* ---- records panel (mountRecords) ---- */
+.arcade-records {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--well);
+  border: 3px solid var(--line);
+  font-size: var(--fs-xs);
+}
+.arcade-records .ar-title {
+  color: var(--acc-t);
+}
+.arcade-records .ar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.arcade-records .ar-label {
+  min-width: 11ch;
+}
+.arcade-records .ar-value {
+  font-weight: 400;
+  color: var(--ink);
+}
+.arcade-records .ar-note {
+  font-style: normal;
+  opacity: 0.7;
+  margin-left: auto;
+}
+
+.arcade-players [hidden] {
+  display: none !important;
+}
+
+/* The 4-character sign-in code, shown big on the new device and typed big on the other. */
+.arcade-players .card .ap-bigcode {
+  margin: 4px 0;
+  text-align: center;
+  font-size: calc(var(--fs-hero, 32px) * 1.1);
+  letter-spacing: 0.35em;
+  color: var(--acc-t);
+  user-select: all;
+}
+.arcade-players .card input.ap-bigcode {
+  width: 100%;
+  padding: 8px 0 8px 0.35em;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+
+/* ---- PLAY ONLINE (showOnlinePlay) ---- */
+.arcade-players .am-head {
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--acc-t);
+}
+.arcade-players .am-row {
+  padding: 6px;
+  background: var(--well);
+  border: 3px solid var(--line);
+}
+.arcade-players .am-row .ap-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.arcade-players .am-row .ap-name b {
+  font-weight: 400;
+}
+.arcade-players .am-sub {
+  font-style: normal;
+  font-size: var(--fs-xs);
+  opacity: 0.75;
+}

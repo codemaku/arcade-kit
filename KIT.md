@@ -251,6 +251,9 @@ playerBtn.onclick = () => showPlayerCard({ onChange: redraw });
 onPlayersChange(redraw);
 ```
 
+- Signing up is a name (or I PLAY ON ANOTHER DEVICE); the colour is picked for them.
+- Another device signs in with a 4-character code it shows, approved from the
+  player card's SIGN IN ANOTHER DEVICE; or with a backup email, or a recovery code.
 - `record()` needs a current player (else returns null). `game` and `skill` are
   lowercase slugs; pick one `skill` per real measure and keep it stable.
 - `better: "lower"` for golf-style measures; the default is `"higher"`.
@@ -263,6 +266,79 @@ onPlayersChange(redraw);
 - Results go to `https://codemaku-api.codemaku.workers.dev`. Use
   `configurePlayers({ api: "http://localhost:8787" })` against a local API in development.
 - `challengeName()` now returns the current player's name when there is one.
+
+### Scores: `submitScore`, `mountRecords`, `pickPlayer`
+
+**The one way to score a round.** Every game uses this, so MY PROGRESS,
+records and the village work the same everywhere.
+
+```js
+import { currentPlayer, pickPlayer, submitScore, mountRecords, listRecords, loadRecords } from "@codemaku/arcade";
+
+// Seats: Player 1 is the current player. Others pick a profile, make one, or play as a guest.
+const seats = [currentPlayer()];
+pickPlayer({ exclude: seats.map((s) => s?.id), onPick: (seat) => seats.push(seat) });
+
+// Show records where the round is chosen (re-renders itself when they change):
+const panel = mountRecords("records", { game: "golf", skill: "differential", board: "pebble-18-t100",
+  format: (v, d) => (d.toPar > 0 ? `+${d.toPar}` : d.toPar || "E") });
+panel.update({ board: "pebble-9-t100" });
+
+// At the end, ONE result per seat per round:
+for (const seat of seats) {
+  const r = submitScore({ game: "golf", skill: "differential", value: 11.2, better: "lower",
+    board: "pebble-18-t100", details: { toPar: 6, gross: 78, putts: 1.8 } }, { player: seat.id });
+  if (r?.personalBest) say(`NEW PERSONAL BEST FOR ${seat.name}`);
+}
+```
+
+Rules:
+
+- **One result per round.** `skill` is the measure the game is about and the
+  only one shown in MY PROGRESS. Keep it stable forever. Put everything else
+  (putts, accuracy, time) in `details`.
+- **`board`** is a leaderboard inside the game: a course at a length and tee,
+  a level, a difficulty. Records only compare on the same board. Omit it for
+  a game with one board.
+- **Never keep records only in `localStorage`.** Inside the hub app on iPhone,
+  a game's storage can be gone when the app is closed. `getRecords` /
+  `listRecords` read the device cache (instant, offline); `loadRecords` refreshes
+  it from the server; a submitted round counts at once.
+- `submitScore(..., { player: null })` or a guest seat returns null: guests
+  aren't saved. Say so on the results screen.
+- Pass the seat's `id` through the round, don't match players by name.
+- `record()` still works for older games; new code uses `submitScore`.
+- Players on the same device are in each other's village automatically, so a
+  family's VILLAGE BEST works with no friend codes.
+
+### Online play: `showOnlinePlay`, `watchMatch`, `sendMove`
+
+Turn-based games against people in your village. Live when both are on the
+page (it polls every 2 seconds), or play your move and come back later. The
+Codemaku API keeps the moves and checks them with the game's rules, so a game
+needs its rules added to the API (`RULES` in `codemaku/api`) first.
+
+```js
+import { showOnlinePlay, watchMatch, sendMove, resignMatch } from "@codemaku/arcade";
+
+showOnlinePlay({
+  game: "gomoku",
+  newOptions: () => ({ blocked: asteroids(), first: Math.random() < 0.5 ? 1 : 2 }),
+  onOpen: (match) => {
+    const w = watchMatch(match.id, draw);          // stop with w.stop()
+    onTap = async (cell) => {
+      if (!current.yourTurn) return;
+      const m = await sendMove(current, cell);     // the server says if it's legal
+      w.seen(m);
+      draw(m);
+    };
+  },
+});
+```
+
+- Seat 1 asked, seat 2 was asked. `match.seat` is mine; `yourTurn` says it all.
+- Build the board from `options` + `moves`; never trust local state over the match.
+- A failed `sendMove` (`stale`, `taken`, `not_your_turn`): fetch the match and redraw.
 
 ### Brand: `mountBrand`, `brandHTML`, `logoSVG`, `drawLogo`, `HUB_URL`
 

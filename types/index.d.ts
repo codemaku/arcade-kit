@@ -208,7 +208,7 @@ export function setCurrentPlayer(id: string | null): Player | null;
 /** Runs on any change to the players or the current player. Returns an unsubscribe. */
 export function onPlayersChange(fn: (current: Player | null) => void): () => void;
 /** Make a player on this device (works offline) and make them current. */
-export function createPlayer(options?: { name?: string; avatar?: number }): Player;
+export function createPlayer(options?: { name?: string; avatar?: number; makeCurrent?: boolean }): Player;
 export function updatePlayer(id: string, changes: { name?: string; avatar?: number }): Promise<Player | null>;
 /** Take a player off this device. Their account and progress stay on the server. */
 export function removePlayer(id: string): Promise<void>;
@@ -228,6 +228,10 @@ export interface ResultInput {
   seed?: number;
   /** Challenge id or tag, when the round came from a challenge link. */
   challenge?: string;
+  /** Leaderboard inside the game: lowercase letters, digits, . - and _ (64 max). */
+  board?: string;
+  /** Extra numbers or short labels about the round (16 keys, 1 KB). */
+  details?: Record<string, number | string | boolean>;
 }
 /** Save a result for the current player (or `player`) and send it in the background. Returns its id, or null. */
 export function record(result: ResultInput, options?: { player?: string }): string | null;
@@ -255,6 +259,8 @@ export interface Account {
   avatar: number;
   friendCode: string;
   hasRecovery: boolean;
+  /** "w•••@gmail.com" when a backup email is saved, else null. */
+  emailHint: string | null;
   createdAt: number;
 }
 export function fetchAccount(id?: string): Promise<Account>;
@@ -270,6 +276,84 @@ export function fetchVillage(id?: string): Promise<{ friends: Friend[]; incoming
 export function addFriend(code: string, id?: string): Promise<{ friend: Player; status: "pending" | "accepted" }>;
 export function acceptFriend(friendId: string, id?: string): Promise<{ ok: true }>;
 export function removeFriend(friendId: string, id?: string): Promise<{ ok: true }>;
+
+/** A seat in a multi-player round. `id` is null for a guest. */
+export interface Seat extends Player {
+  id: string | null;
+  guest: boolean;
+}
+/** Choose Player 2 (3, 4...): a player on this device, a new one made here, or a guest. */
+export function pickPlayer(options?: {
+  onPick?: (seat: Seat) => void;
+  /** Player ids already seated. */
+  exclude?: (string | null)[];
+  title?: string;
+  /** Offer PLAY AS GUEST. Default true. */
+  guest?: boolean;
+}): PlayersDialog;
+/** One stat per game: the measure it records each round. */
+export function perGame(stats: SkillStat[]): SkillStat[];
+/** A random colour index no player on this device has yet. */
+export function freeAvatar(): number;
+/** New device: get a 4-character code to show; `done` resolves once a signed-in device approves it. */
+export function startLink(): Promise<{ code: string; expiresAt: number; done: Promise<Player>; cancel(): void }>;
+/** Signed-in device: approve the code another device shows, signing it in as this player. */
+export function approveLink(code: string, id?: string): Promise<{ ok: true; account: Player }>;
+/** Send a verification code to save a backup email; then verifyBackupEmail(code). */
+export function setBackupEmail(email: string, id?: string): Promise<{ sent: true; hint: string }>;
+export function verifyBackupEmail(code: string, id?: string): Promise<Account>;
+export function removeBackupEmail(id?: string): Promise<Account>;
+/** New device: email a sign-in code to a backup email; then claimByEmail(email, code). */
+export function recoverByEmail(email: string): Promise<{ sent: true; hint: string }>;
+/** Sign this device in to every player saved with that email. */
+export function claimByEmail(email: string, code: string): Promise<Player[]>;
+/** Low-level authenticated API call as a player on this device. */
+export function playerApi(method: string, path: string, id?: string, body?: unknown): Promise<any>;
+
+/* ---- scores ---- */
+
+export interface RecordEntry {
+  id: string;
+  name: string;
+  avatar: number;
+  value: number;
+  at: number;
+  details: Record<string, number | string | boolean> | null;
+  plays?: number;
+}
+export interface BoardRecords {
+  board?: string;
+  me: RecordEntry | null;
+  /** Best of each person in the village, best first, the player included. */
+  village: RecordEntry[];
+  better: "higher" | "lower" | null;
+  unit: string | null;
+}
+export interface ScoreResult {
+  id: string;
+  value: number;
+  personalBest: boolean;
+  previous: RecordEntry | null;
+  villageBest: boolean;
+}
+/** Score a finished round: one result. Null for a guest or a bad result. */
+export function submitScore(result: ResultInput, options?: { player?: string | null }): ScoreResult | null;
+export function getRecords(q: { game: string; skill: string; board?: string; player?: string | null }): BoardRecords;
+export function listRecords(q: { game: string; skill: string; player?: string | null }): (BoardRecords & { board: string })[];
+export function loadRecords(q: { game: string; skill: string; board?: string; player?: string | null }): Promise<(BoardRecords & { board: string })[]>;
+export function onRecordsChange(fn: (game: string) => void): () => void;
+export function beats(a: number | null | undefined, b: number | null | undefined, better?: "higher" | "lower"): boolean;
+export function mountRecords(
+  target: string | HTMLElement,
+  options: {
+    game: string;
+    skill: string;
+    board?: string;
+    player?: string | null;
+    title?: string;
+    format?: (value: number, details: Record<string, any>) => string;
+  },
+): { update(options: Partial<{ game: string; skill: string; board: string; player: string | null; title: string }>): void; destroy(): void };
 
 export interface PlayersDialog {
   close(): void;
@@ -288,3 +372,52 @@ export function avatarEl(player: Player | null, size?: number): HTMLSpanElement;
 export function showProgress(): PlayersDialog | undefined;
 /** The village screen: friend code, requests, friends' streaks and bests, add by code. */
 export function showVillage(): PlayersDialog | undefined;
+
+/* ---- online matches ---- */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface Match<Options = any, Move = any> {
+  id: string;
+  game: string;
+  options: Options;
+  moves: { seat: 1 | 2; move: Move; at: number }[];
+  status: "invited" | "active" | "done" | "declined";
+  /** Seat to move. */
+  turn: 1 | 2;
+  /** 1 or 2, 0 for a draw, null while playing. */
+  winner: 0 | 1 | 2 | null;
+  endedBy: "win" | "draw" | "resign" | null;
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+  /** My seat. Seat 1 is whoever asked. */
+  seat: 1 | 2;
+  players: { 1: Player; 2: Player };
+  opponent: Player;
+  yourTurn: boolean;
+}
+export interface HeadToHead {
+  won: number;
+  lost: number;
+  drawn: number;
+}
+export function createMatch<O>(q: { game: string; opponent: string; options?: O }): Promise<Match<O>>;
+export function listMatches(game?: string): Promise<{ matches: Match[]; records: Record<string, HeadToHead> }>;
+export function getMatch(id: string): Promise<Match>;
+export function acceptMatch(id: string): Promise<Match>;
+export function declineMatch(id: string): Promise<Match>;
+/** Throws Error("not_your_turn" | "taken" | "stale" | "bad_move" | "not_active"). */
+export function sendMove<O, M>(match: Match<O, M>, move: M): Promise<Match<O, M>>;
+export function resignMatch(id: string): Promise<Match>;
+export function watchMatch(
+  id: string,
+  onChange: (match: Match) => void,
+  options?: { every?: number; hidden?: number },
+): { stop(): void; seen(match: Match): void };
+export function waitingOnMe(game?: string): Promise<number>;
+export function showOnlinePlay(options: {
+  game: string;
+  title?: string;
+  newOptions?: () => Record<string, unknown>;
+  onOpen?: (match: Match) => void;
+}): { close(): void };
