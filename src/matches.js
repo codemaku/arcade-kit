@@ -13,7 +13,12 @@
  * A match is { id, game, options, moves: [{ seat, move, at }], status
  * ("invited" | "active" | "done" | "declined"), turn, winner (1, 2, 0 = draw),
  * endedBy ("win" | "draw" | "resign"), version, seat (mine), players: { 1, 2 },
- * opponent, yourTurn }. Seat 1 is whoever asked.
+ * opponent, yourTurn, record: { won, lost, drawn } (all our finished games of
+ * this game, from my side), next: { id, status, askedByMe } | null (the
+ * rematch) }. Seat 1 is whoever asked.
+ *
+ * The hub lists invites from every game and opens a match in its game with
+ * `?match=<id>` (`matchLink`); the game picks it up with `readMatchLink()`.
  */
 
 import { currentPlayer, chooseWhoIsPlaying, fetchVillage, playerApi, avatarEl, showVillage } from "./players.js";
@@ -49,6 +54,49 @@ export async function sendMove(match, move) {
 }
 export async function resignMatch(id) {
   return (await playerApi("POST", `/v1/matches/${id}/resign`, need())).match;
+}
+/**
+ * The same two players again on a finished match, with fresh `options` (a new
+ * board). The server makes whoever didn't open the last game open this one.
+ * The other player sees it as `next` on the finished match. If they asked
+ * first, this says yes to theirs. Resolves to the rematch.
+ */
+export async function rematchMatch(id, options = {}) {
+  return (await playerApi("POST", `/v1/matches/${id}/rematch`, need(), { options })).match;
+}
+
+/**
+ * The last two weeks in my village, newest first: `{ items }`, each
+ * `{ id, kind: "match" | "best", game, at, a, b, data }`. A match: `a` won (or
+ * drew) against `b`; `data` = { result: "win" | "draw", by, moves, record: { a, b, drawn } }.
+ * A best: `a` set a new personal best; `data` = { skill, board, value, prev, unit, better, details }.
+ */
+export async function fetchFeed() {
+  return playerApi("GET", "/v1/feed", need());
+}
+
+/** `url` with `?match=<id>`, to open that match in its game. */
+export function matchLink(url, id) {
+  const u = new URL(url, location.href);
+  u.searchParams.set("match", id);
+  return u.href;
+}
+
+/**
+ * The match id a link opened this page with (see `matchLink`), or null. It's
+ * taken off the address bar, so a reload doesn't open it again.
+ */
+export function readMatchLink() {
+  try {
+    const u = new URL(location.href);
+    const id = u.searchParams.get("match");
+    if (!id) return null;
+    u.searchParams.delete("match");
+    history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+    return /^[0-9a-f-]{36}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -106,6 +154,7 @@ const errorText = (e) =>
     not_in_village: "YOU CAN ONLY PLAY PEOPLE IN YOUR VILLAGE.",
     too_many_matches: "THAT'S A LOT OF GAMES! FINISH SOME FIRST.",
     not_invited: "THAT INVITE IS GONE.",
+    not_done: "FINISH THIS GAME FIRST.",
   })[e?.message] || "COULDN'T REACH CODEMAKU. ARE YOU ONLINE?";
 
 const ago = (t) => {
@@ -248,7 +297,7 @@ export function showOnlinePlay({ game, title = "PLAY ONLINE", newOptions = () =>
             say("SENDING...");
             try {
               const m = await createMatch({ game, opponent: f.id, options: newOptions() });
-              say(`ASKED ${f.name.toUpperCase()}. THEY'LL SEE IT WHEN THEY OPEN THE GAME.`);
+              say(`ASKED ${f.name.toUpperCase()}. THEY'LL SEE IT ON THE CODEMAKU HUB.`);
               open(m);
             } catch (e) {
               say(errorText(e));

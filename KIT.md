@@ -261,7 +261,9 @@ onPlayersChange(redraw);
   same-round results can be compared.
 - Pass-and-play: `record(result, { player: otherId })` for Player 2.
 - `fetchProgress()` → `{ streak, stats: [{ game, skill, plays, best, latest, recent }] }`.
-- Ready-made screens: `showProgress()` and `showVillage()`.
+- Ready-made screens: `showProgress()` and `showVillage()`. MY PROGRESS lives in each
+  game: pass `progress: "<game slug>"` to `mountHeader` for a PROGRESS button, or call
+  `showProgress({ game, title })`. The hub's VILLAGE tab shows invites and the feed.
 - The village: `fetchVillage()`, `addFriend(code)`, `acceptFriend(id)`, `removeFriend(id)`.
 - Results go to `https://codemaku-api.codemaku.workers.dev`. Use
   `configurePlayers({ api: "http://localhost:8787" })` against a local API in development.
@@ -337,6 +339,15 @@ showOnlinePlay({
 ```
 
 - Seat 1 asked, seat 2 was asked. `match.seat` is mine; `yourTurn` says it all.
+- `match.record` is the running head-to-head (`{ won, lost, drawn }`, my side) for this game.
+- REMATCH on a finished match: `rematchMatch(match.id, newOptions())`. The server
+  makes the player who didn't open last time open this one. The other player,
+  still watching the finished match, gets `match.next` (`{ id, status, askedByMe }`):
+  show "THEY WANT A REMATCH" there, and their REMATCH (the same call) says yes.
+- The hub shows every game's invites and opens a match with `?match=<id>`
+  (`matchLink(url, id)`). On load, open it: `const id = readMatchLink(); if (id) openMatch(await getMatch(id));`
+- `fetchFeed()`: the village feed (finished online games with the record after
+  them, and new personal bests). The hub shows it; games don't need to.
 - Build the board from `options` + `moves`; never trust local state over the match.
 - A failed `sendMove` (`stale`, `taken`, `not_your_turn`): fetch the match and redraw.
 

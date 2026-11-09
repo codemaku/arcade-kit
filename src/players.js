@@ -992,6 +992,10 @@ export function showPlayerCard({ onChange } = {}) {
       d.close();
       chooseWhoIsPlaying({ onPick: onChange });
     }),
+    button("MY PROGRESS", "", () => {
+      d.close();
+      showProgress();
+    }),
     button("EDIT NAME + COLOUR", "", () => {
       d.close();
       editDialog(me, onChange);
@@ -1099,11 +1103,15 @@ function statRow(stat, { detail = true } = {}) {
 
 const streakText = (n) => (n ? `STREAK: ${n} ${n === 1 ? "DAY" : "DAYS"}` : "NO STREAK YET. PLAY TODAY!");
 
-/** The current player's progress: streak, then best / last / trend per game and skill. */
-export function showProgress() {
+/**
+ * The current player's progress: streak, then best / last / trend per game.
+ * With `game`, only that game, every measure it has recorded (a game's own
+ * PROGRESS button). `title` names the game in the heading.
+ */
+export function showProgress({ game, title } = {}) {
   const me = currentPlayer();
-  if (!me) return chooseWhoIsPlaying({ onPick: () => showProgress() });
-  const d = sheet("MY PROGRESS");
+  if (!me) return chooseWhoIsPlaying({ onPick: (p) => p && showProgress({ game, title }) });
+  const d = sheet(game ? `MY PROGRESS · ${String(title || label(game)).toUpperCase()}` : "MY PROGRESS");
   const head = el("div", "ap-head");
   head.append(avatarEl(me, 40), el("span", "ap-big", me.name));
   const body = el("div", "ap-list");
@@ -1112,8 +1120,9 @@ export function showProgress() {
   fetchProgress(me.id)
     .then(({ streak, stats }) => {
       body.replaceChildren(el("p", "ap-streak", streakText(streak)));
-      const games = perGame(stats);
-      if (!games.length) body.append(el("p", null, "No rounds yet. Play a game and your numbers show up here."));
+      const games = game ? stats.filter((s) => s.game === game) : perGame(stats);
+      if (!games.length)
+        body.append(el("p", null, game ? "No rounds yet. Finish one and your numbers show up here." : "No rounds yet. Play a game and your numbers show up here."));
       for (const s of games) body.append(statRow(s));
     })
     .catch((e) => body.replaceChildren(el("p", "ap-status", errorText(e))));

@@ -125,6 +125,8 @@ export interface HeaderOptions {
   sound?: { get(): boolean; set(on: boolean): void };
   /** Extra game buttons, shown before sound and theme. */
   actions?: HeaderAction[];
+  /** The game's slug (as given to submitScore): adds PROGRESS, which opens MY PROGRESS for this game. */
+  progress?: string;
   /** Show INSTALL when installable. Default true. */
   install?: boolean;
   /** INSTALL offers the hub first (every game in one app). Default true. */
@@ -368,8 +370,8 @@ export function chooseWhoIsPlaying(options?: {
 export function showPlayerCard(options?: { onChange?: (player: Player | null) => void }): void;
 /** A square avatar element: the player's colour with their initial. */
 export function avatarEl(player: Player | null, size?: number): HTMLSpanElement;
-/** The current player's progress screen: streak, then best / last / trend per game and skill. */
-export function showProgress(): PlayersDialog | undefined;
+/** The current player's progress screen. With `game`, just that game (every measure it records). */
+export function showProgress(options?: { game?: string; title?: string }): PlayersDialog | undefined;
 /** The village screen: friend code, requests, friends' streaks and bests, add by code. */
 export function showVillage(): PlayersDialog | undefined;
 
@@ -395,12 +397,49 @@ export interface Match<Options = any, Move = any> {
   players: { 1: Player; 2: Player };
   opponent: Player;
   yourTurn: boolean;
+  /** All our finished games of this game, from my side, this one included once it's over. */
+  record: HeadToHead;
+  /** The rematch, once either player asked for one. */
+  next: { id: string; status: Match["status"]; askedByMe: boolean } | null;
 }
 export interface HeadToHead {
   won: number;
   lost: number;
   drawn: number;
 }
+/** Same two players, new options; the other player opens. Says yes if they asked first. */
+export function rematchMatch<O>(id: string, options?: O): Promise<Match<O>>;
+export interface FeedPlayer {
+  id: string;
+  name: string;
+  avatar: number;
+}
+export type FeedItem =
+  | {
+      id: string;
+      kind: "match";
+      game: string;
+      at: number;
+      /** The winner, or seat 1 for a draw. */
+      a: FeedPlayer;
+      b: FeedPlayer;
+      data: { match: string; result: "win" | "draw"; by: "win" | "draw" | "resign"; moves: number; record: { a: number; b: number; drawn: number } };
+    }
+  | {
+      id: string;
+      kind: "best";
+      game: string;
+      at: number;
+      a: FeedPlayer;
+      b: null;
+      data: { skill: string; board: string | null; value: number; prev: number; unit: string | null; better: "higher" | "lower"; details: Record<string, number | string | boolean> | null };
+    };
+/** The last two weeks in my village, newest first: finished online games and new personal bests. */
+export function fetchFeed(): Promise<{ items: FeedItem[] }>;
+/** `url` with `?match=<id>`, to open that match in its game. */
+export function matchLink(url: string, id: string): string;
+/** The match id this page was opened with (`?match=`), taken off the address bar. */
+export function readMatchLink(): string | null;
 export function createMatch<O>(q: { game: string; opponent: string; options?: O }): Promise<Match<O>>;
 export function listMatches(game?: string): Promise<{ matches: Match[]; records: Record<string, HeadToHead> }>;
 export function getMatch(id: string): Promise<Match>;
