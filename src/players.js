@@ -15,6 +15,8 @@
  * background. Results carry their own id, so a resend never duplicates.
  */
 
+import { el, sheet, button } from "./ui.js";
+
 const COOKIE = "cm_players";
 const LOCAL = "cm_players";
 const OUTBOX = "cm_outbox";
@@ -22,6 +24,7 @@ const OUTBOX_MAX = 1000;
 const MAX_PLAYERS = 8;
 const NAME_MAX = 12;
 const SLUG = /^[a-z0-9][a-z0-9_-]{0,39}$/;
+const BOARD = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 
 /** Player colours, by avatar number. */
 export const AVATAR_COLORS = [
@@ -85,7 +88,9 @@ function writeLocal(key, value) {
 
 /* ---- the device's player list ------------------------------------------- */
 
-// Shape on disk: { p: [{ i, n, a, t, r }], c: currentId }. r = registered with the API.
+// Shape on disk: { p: [{ i, n, a, t, r }], c: currentId, k: [pair keys] }.
+// r = registered with the API; k = pairs of players already put in each
+// other's village (so an unfriend in the village isn't undone).
 
 function cookieDomain() {
   const h = location.hostname;
@@ -163,14 +168,17 @@ export function onPlayersChange(fn) {
   return () => removeEventListener("arcade:players", h);
 }
 
-/** Make a new player on this device and make them current. Works offline. */
-export function createPlayer({ name, avatar } = {}) {
+/**
+ * Make a new player on this device and make them current. Works offline.
+ * `makeCurrent: false` adds them without switching (e.g. Player 2 in a game).
+ */
+export function createPlayer({ name, avatar, makeCurrent = true } = {}) {
   const s = load();
   if (s.p.length >= MAX_PLAYERS) throw new Error("too_many_players");
   const a = Number.isInteger(avatar) ? avatar : s.p.length % AVATAR_COLORS.length;
   const p = { i: uuid(), n: cleanName(name) || "PLAYER", a, t: newToken(), r: 0 };
   s.p.push(p);
-  s.c = p.i;
+  if (makeCurrent || !s.c) s.c = p.i;
   save(s);
   sync();
   return view(p);
@@ -196,6 +204,7 @@ export async function removePlayer(id) {
   if (!p) return;
   s.p = s.p.filter((x) => x.i !== id);
   if (s.c === id) s.c = null;
+  s.k = (s.k || []).filter((k) => !k.split(":").includes(id.slice(0, 8)));
   save(s);
   if (p.r) await api("DELETE", "/v1/session", p).catch(() => {});
 }
@@ -223,9 +232,102 @@ export async function joinWithCode(code) {
   return addSignedIn(account, token);
 }
 
+/** A random colour no one on this device has yet (any colour once all 8 are taken). */
+export function freeAvatar() {
+  const used = new Set(load().p.map((p) => p.a));
+  const free = [...Array(8).keys()].filter((i) => !used.has(i));
+  const pool = free.length ? free : [...Array(8).keys()];
+  return pool[crypto.getRandomValues(new Uint8Array(1))[0] % pool.length];
+}
+
+/**
+ * Sign this device in to a player who plays somewhere else: show `code`
+ * (4 characters, 5 minutes) and approve it there with approveLink(). Resolves
+ * `done` with the player once approved; rejects with "expired" or "cancelled".
+ */
+export async function startLink() {
+  if (load().p.length >= MAX_PLAYERS) throw new Error("too_many_players");
+  const token = newToken();
+  const { code, expiresAt } = await api("POST", "/v1/link", null, { token });
+  let stopped = false;
+  let timer;
+  const done = new Promise((resolve, reject) => {
+    const poll = async () => {
+      if (stopped) return reject(new Error("cancelled"));
+      if (Date.now() > expiresAt) return reject(new Error("expired"));
+      try {
+        const { account } = await api("GET", "/v1/me", { t: token });
+        const p = addSignedIn(account, token);
+        sync();
+        return resolve(p);
+      } catch {
+        /* not yet approved */
+      }
+      timer = setTimeout(poll, 2000);
+    };
+    timer = setTimeout(poll, 2000);
+  });
+  return {
+    code,
+    expiresAt,
+    done,
+    cancel() {
+      stopped = true;
+      clearTimeout(timer);
+    },
+  };
+}
+
+/** On a signed-in device: approve the code another device is showing, signing it in as this player. */
+export async function approveLink(code, id) {
+  return playerApi("POST", "/v1/link/approve", id, { code });
+}
+
+/** Send a code to `email` to save it as the player's backup. Then verifyBackupEmail(code). */
+export async function setBackupEmail(email, id) {
+  return playerApi("POST", "/v1/email", id, { email });
+}
+export async function verifyBackupEmail(code, id) {
+  return (await playerApi("POST", "/v1/email/verify", id, { code })).account;
+}
+export async function removeBackupEmail(id) {
+  return (await playerApi("DELETE", "/v1/email", id)).account;
+}
+
+/** Email a sign-in code to a backup email. Then claimByEmail(email, code). */
+export async function recoverByEmail(email) {
+  return api("POST", "/v1/email/recover", null, { email });
+}
+/** Sign this device in to every player with that backup email. Resolves to the players added. */
+export async function claimByEmail(email, code) {
+  const room = Math.max(1, MAX_PLAYERS - load().p.length);
+  const tokens = Array.from({ length: room }, newToken);
+  const { players: got } = await api("POST", "/v1/email/claim", null, { email, code, tokens });
+  if (!got.length) throw new Error("bad_code");
+  const added = [];
+  for (const { account, token } of got) {
+    try {
+      added.push(addSignedIn(account, token));
+    } catch {
+      /* device full */
+    }
+  }
+  if (added[0]) setCurrentPlayer(added[0].id);
+  sync();
+  return added;
+}
+
 /* ---- API ----------------------------------------------------------------- */
 
 const raw = (p) => load().p.find((x) => x.i === p);
+
+/**
+ * Call the Codemaku API as a player on this device (registering them first if
+ * needed). Low level: games use record(), the scores helpers and the screens.
+ */
+export async function playerApi(method, path, id, body) {
+  return api(method, path, await ensureRegistered(needPlayer(id)), body);
+}
 
 async function api(method, path, player, body) {
   if (!apiBase) throw new Error("offline");
@@ -321,10 +423,20 @@ export async function removeFriend(friendId, id) {
  *   record({ game: "golf", skill: "spread", value: 4.2, unit: "m", better: "lower", seed })
  */
 export function record(result, { player } = {}) {
+  return recordResult(result, { player })?.id ?? null;
+}
+
+/** record(), returning the whole saved result. Used by submitScore(). */
+export function recordResult(result, { player } = {}) {
   const pid = player ?? currentPlayer()?.id;
   if (!pid || !raw(pid)) return null;
-  const { game, skill, value, unit = null, better = "higher", seed, challenge } = result || {};
-  if (!SLUG.test(String(game)) || !SLUG.test(String(skill)) || !Number.isFinite(value)) {
+  const { game, skill, value, unit = null, better = "higher", seed, challenge, board, details } = result || {};
+  if (
+    !SLUG.test(String(game)) ||
+    !SLUG.test(String(skill)) ||
+    !Number.isFinite(value) ||
+    (board != null && !BOARD.test(String(board)))
+  ) {
     console.warn("[arcade] record(): bad result", result);
     return null;
   }
@@ -339,16 +451,37 @@ export function record(result, { player } = {}) {
     playedAt: Date.now(),
     ...(Number.isInteger(seed) ? { seed: seed >>> 0 } : {}),
     ...(challenge ? { challenge: String(challenge) } : {}),
+    ...(board != null ? { board: String(board) } : {}),
+    ...(details && typeof details === "object" ? { details } : {}),
   };
   const box = readLocal(OUTBOX, []);
   box.push(r);
   writeLocal(OUTBOX, box.slice(-OUTBOX_MAX));
   sync();
-  return r.id;
+  return r;
 }
 
 /** How many results are waiting to be sent from this game. */
 export const unsent = () => readLocal(OUTBOX, []).length;
+
+const pairKey = (a, b) => [a.slice(0, 8), b.slice(0, 8)].sort().join(":");
+
+/**
+ * Players on the same device are family or housemates: put each pair in each
+ * other's village once. The device holds both tokens, which is the proof.
+ */
+async function linkDevicePlayers() {
+  const reg = load().p.filter((p) => p.r);
+  for (let i = 0; i < reg.length; i++)
+    for (let j = i + 1; j < reg.length; j++) {
+      const key = pairKey(reg[i].i, reg[j].i);
+      if ((load().k || []).includes(key)) continue;
+      await api("POST", "/v1/friends/device", reg[i], { token: reg[j].t });
+      const s = load();
+      s.k = [...new Set([...(s.k || []), key])];
+      save(s);
+    }
+}
 
 let syncing = null;
 
@@ -366,6 +499,7 @@ export function sync() {
     try {
       const s = load();
       for (const p of s.p) if (!p.r) await ensureRegistered(p.i).catch(() => {});
+      await linkDevicePlayers().catch(() => {});
       let box = readLocal(OUTBOX, []);
       const byPlayer = new Map();
       for (const r of box) {
@@ -399,6 +533,8 @@ export function sync() {
 }
 
 if (typeof window !== "undefined") {
+  // Once after load: send anything left from last time and link device players.
+  setTimeout(() => load().p.length && sync(), 1500);
   addEventListener("online", () => sync());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
@@ -411,13 +547,6 @@ if (typeof window !== "undefined") {
 
 /* ---- dialogs ------------------------------------------------------------- */
 
-const el = (tag, cls, text) => {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text != null) n.textContent = text;
-  return n;
-};
-
 /** A square avatar: the player's colour with their initial. */
 export function avatarEl(player, size = 40) {
   const a = el("span", "ap-avatar", (player?.name || "?").slice(0, 1).toUpperCase());
@@ -428,68 +557,130 @@ export function avatarEl(player, size = 40) {
   return a;
 }
 
-function sheet(title) {
-  const ov = el("div", "arcade-overlay ah-install arcade-players");
-  ov.setAttribute("role", "dialog");
-  ov.setAttribute("aria-modal", "true");
-  ov.setAttribute("aria-label", title);
-  ov.style.display = "flex";
-  const card = el("div", "card");
-  card.append(el("h2", null, title));
-  ov.append(card);
-  document.body.append(ov);
-  return { ov, card, close: () => ov.remove() };
-}
-
-function button(label, kind, onClick) {
-  const b = el("button", `btn${kind ? ` ${kind}` : ""}`, label);
-  b.type = "button";
-  b.addEventListener("click", onClick);
-  return b;
-}
-
 const errorText = (e) =>
   ({
     bad_code: "THAT CODE DIDN'T WORK. CHECK IT AND TRY AGAIN.",
+    bad_email: "THAT EMAIL DOESN'T LOOK RIGHT.",
     too_many_tries: "TOO MANY TRIES. WAIT A FEW MINUTES.",
     too_many_players: `THIS DEVICE HAS ${MAX_PLAYERS} PLAYERS ALREADY.`,
+    expired: "THAT CODE RAN OUT. HERE'S A NEW ONE.",
+    email_failed: "COULDN'T SEND THE EMAIL. TRY AGAIN SOON.",
+    email_off: "EMAIL ISN'T SET UP YET. USE A CODE FROM ANOTHER DEVICE.",
     self: "THAT'S YOUR OWN CODE!",
   })[e?.message] || "COULDN'T REACH CODEMAKU. ARE YOU ONLINE?";
 
+function statusLine() {
+  const status = el("p", "ap-status");
+  status.hidden = true;
+  const say = (t) => {
+    status.textContent = t || "";
+    status.hidden = !t;
+  };
+  return { status, say };
+}
+
 /**
- * The "WHO'S PLAYING?" screen: pick a player, make a new one, or add one from
- * another device. Calls `onPick(player)` once someone is chosen.
- * `closable: false` hides the CLOSE button (e.g. on first launch).
+ * The quick "new player" row: type a name, go. A colour is picked for them
+ * (they can change it on their player card). Calls `onMade(player)`.
+ */
+function quickName({ label = "NEW PLAYER", go = "LET'S PLAY", makeCurrent = true, onMade }) {
+  const { wrap, input } = nameField(label);
+  input.placeholder = "YOUR NAME";
+  const { status, say } = statusLine();
+  const submit = () => {
+    const name = cleanName(input.value);
+    if (!name) {
+      say("TYPE A NAME FIRST.");
+      return input.focus();
+    }
+    try {
+      onMade(createPlayer({ name, avatar: freeAvatar(), makeCurrent }));
+    } catch (e) {
+      say(errorText(e));
+    }
+  };
+  input.addEventListener("keydown", (e) => e.key === "Enter" && submit());
+  return { nodes: [wrap, status, button(go, "hot", submit)], input };
+}
+
+/**
+ * The "WHO'S PLAYING?" screen: tap a player, or type a name to start, or
+ * sign in a player from another device. Calls `onPick(player)` once someone
+ * is chosen. `closable: false` hides the CLOSE button (e.g. on first launch).
  */
 export function chooseWhoIsPlaying({ onPick, closable = true, title = "WHO'S PLAYING?" } = {}) {
   const d = sheet(title);
   const list = players();
   const cur = currentPlayer();
-  const grid = el("div", "ap-grid");
-  for (const p of list) {
-    const b = button("", `ap-pick${cur?.id === p.id ? " on" : ""}`, () => {
-      setCurrentPlayer(p.id);
-      d.close();
-      onPick?.(currentPlayer());
-    });
-    b.append(avatarEl(p, 44), el("span", "ap-name", p.name));
-    grid.append(b);
+  const done = (p) => {
+    d.close();
+    onPick?.(p);
+  };
+  if (list.length) {
+    const grid = el("div", "ap-grid");
+    for (const p of list) {
+      const b = button("", `ap-pick${cur?.id === p.id ? " on" : ""}`, () => done(setCurrentPlayer(p.id)));
+      b.append(avatarEl(p, 44), el("span", "ap-name", p.name));
+      grid.append(b);
+    }
+    d.card.append(grid);
   }
-  if (list.length) d.card.append(grid);
-  else d.card.append(el("p", null, "Make a player to save your scores and watch yourself improve."));
+  let input;
   if (list.length < MAX_PLAYERS) {
+    const q = quickName({ label: list.length ? "OR A NEW PLAYER" : "WHAT'S YOUR NAME?", onMade: done });
+    input = q.input;
+    d.card.append(...q.nodes);
+    if (!list.length) d.card.append(el("p", "ap-note", "Just a name, no email or password. Pick a nickname."));
     d.card.append(
-      button("+ NEW PLAYER", "hot", () => {
-        d.close();
-        newPlayerDialog({ onPick, closable });
-      }),
       button("I PLAY ON ANOTHER DEVICE", "alt", () => {
         d.close();
-        joinDialog({ onPick, closable });
+        linkDialog({ onPick, back: () => chooseWhoIsPlaying({ onPick, closable, title }) });
       }),
     );
   }
   if (closable) d.card.append(button("CLOSE", "alt", d.close));
+  if (!list.length) input?.focus();
+  return d;
+}
+
+/**
+ * Pick who sits in a seat other than the current player's (Player 2, 3...):
+ * a player on this device, a new player typed in right here (without
+ * switching who's playing on the device), or a guest whose rounds aren't saved.
+ * Calls `onPick(seat)` with `{ id, name, avatar, guest }` (`id` null for a guest).
+ */
+export function pickPlayer({ onPick, exclude = [], title = "WHO'S PLAYING?", guest = true } = {}) {
+  const d = sheet(title);
+  const skip = new Set(exclude.filter(Boolean));
+  const list = players().filter((p) => !skip.has(p.id));
+  const done = (seat) => {
+    d.close();
+    onPick?.(seat);
+  };
+  if (list.length) {
+    const grid = el("div", "ap-grid");
+    for (const p of list) {
+      const b = button("", "ap-pick", () => done({ ...p, guest: false }));
+      b.append(avatarEl(p, 44), el("span", "ap-name", p.name));
+      grid.append(b);
+    }
+    d.card.append(grid);
+  }
+  if (players().length < MAX_PLAYERS) {
+    const q = quickName({
+      label: list.length ? "OR A NEW PLAYER" : "NAME",
+      go: "ADD PLAYER",
+      makeCurrent: false,
+      onMade: (p) => done({ ...p, guest: false }),
+    });
+    d.card.append(...q.nodes);
+  }
+  if (guest)
+    d.card.append(
+      button("PLAY AS GUEST", "alt", () => done({ id: null, name: "GUEST", avatar: 0, guest: true })),
+      el("p", "ap-note", "Guest rounds count in this game but aren't saved to anyone's progress."),
+    );
+  d.card.append(button("CANCEL", "alt", d.close));
   return d;
 }
 
@@ -525,80 +716,250 @@ function nameField(label, value = "") {
   return { wrap, input };
 }
 
-function newPlayerDialog({ onPick, closable }) {
-  const d = sheet("NEW PLAYER");
-  const { wrap, input } = nameField("YOUR NAME");
-  const colors = avatarPicker(players().length % 8);
-  const status = el("p", "ap-status");
-  status.hidden = true;
-  const go = () => {
-    const name = cleanName(input.value);
-    if (!name) {
-      status.textContent = "TYPE A NAME FIRST.";
-      status.hidden = false;
-      return input.focus();
-    }
+/**
+ * On the new device: show a 4-character code and wait for a signed-in device
+ * to approve it. Offers the backup email and the recovery code instead.
+ */
+function linkDialog({ onPick, back }) {
+  const d = sheet("SIGN IN");
+  const code = el("p", "ap-bigcode", "····");
+  code.setAttribute("aria-live", "polite");
+  const { status, say } = statusLine();
+  let link = null;
+  const stop = () => link?.cancel();
+  const close = () => {
+    stop();
+    d.close();
+  };
+  const begin = async () => {
+    stop();
+    code.textContent = "····";
+    say("GETTING A CODE...");
     try {
-      const p = createPlayer({ name, avatar: colors.value });
-      d.close();
+      link = await startLink();
+      code.textContent = link.code;
+      say("WAITING FOR YOUR OTHER DEVICE...");
+      const p = await link.done;
+      close();
       onPick?.(p);
     } catch (e) {
-      status.textContent = errorText(e);
-      status.hidden = false;
+      if (e.message === "cancelled") return;
+      if (e.message === "expired") return begin();
+      say(errorText(e));
     }
   };
-  input.addEventListener("keydown", (e) => e.key === "Enter" && go());
   d.card.append(
-    wrap,
-    colors.row,
-    el("p", "ap-note", "Just a name, no email. Pick a nickname, not your full name."),
+    el("p", null, "On a device where you already play, open your player, tap SIGN IN ANOTHER DEVICE and type:"),
+    code,
     status,
-    button("LET'S PLAY", "hot", go),
+    button("USE MY BACKUP EMAIL", "", () => {
+      close();
+      emailSignInDialog({ onPick, back: () => linkDialog({ onPick, back }) });
+    }),
+    button("USE A RECOVERY CODE", "alt", () => {
+      close();
+      recoveryDialog({ onPick, back: () => linkDialog({ onPick, back }) });
+    }),
     button("BACK", "alt", () => {
-      d.close();
-      chooseWhoIsPlaying({ onPick, closable });
+      close();
+      back?.();
     }),
   );
-  input.focus();
+  begin();
 }
 
-function joinDialog({ onPick, closable }) {
-  const d = sheet("ADD YOUR PLAYER");
-  const { wrap, input } = nameField("CODE");
-  input.maxLength = 24;
+function codeField(label, { max = 8, placeholder = "", numeric = false } = {}) {
+  const { wrap, input } = nameField(label);
+  input.maxLength = max;
+  input.placeholder = placeholder;
   input.autocomplete = "one-time-code";
-  input.placeholder = "XXXX-XXXX";
-  const status = el("p", "ap-status");
-  status.hidden = true;
+  if (numeric) input.inputMode = "numeric";
+  input.style.textTransform = "uppercase";
+  return { wrap, input };
+}
+
+function emailField(label) {
+  const { wrap, input } = nameField(label);
+  Object.assign(input, { type: "email", maxLength: 254, autocomplete: "email", placeholder: "you@example.com" });
+  input.style.textTransform = "none";
+  return { wrap, input };
+}
+
+/** New device: get a code by email and sign in every player saved with that email. */
+function emailSignInDialog({ onPick, back }) {
+  const d = sheet("SIGN IN BY EMAIL");
+  const mail = emailField("YOUR BACKUP EMAIL");
+  const code = codeField("CODE FROM THE EMAIL", { max: 6, placeholder: "123456", numeric: true });
+  code.wrap.hidden = true;
+  const { status, say } = statusLine();
+  const send = button("SEND ME A CODE", "hot", async () => {
+    say("SENDING...");
+    try {
+      const r = await recoverByEmail(mail.input.value);
+      say(`IF ${r.hint} IS A BACKUP EMAIL, A CODE IS ON ITS WAY. CHECK YOUR INBOX.`);
+      if (r.devCode) code.input.value = r.devCode; // local development only
+      code.wrap.hidden = false;
+      go.hidden = false;
+      code.input.focus();
+    } catch (e) {
+      say(errorText(e));
+    }
+  });
+  const go = button("SIGN IN", "hot", async () => {
+    say("CHECKING...");
+    try {
+      const added = await claimByEmail(mail.input.value, code.input.value);
+      d.close();
+      onPick?.(added[0]);
+    } catch (e) {
+      say(errorText(e));
+    }
+  });
+  go.hidden = true;
+  mail.input.addEventListener("keydown", (e) => e.key === "Enter" && send.click());
+  code.input.addEventListener("keydown", (e) => e.key === "Enter" && go.click());
+  d.card.append(
+    el("p", null, "Every player saved with this email comes back on this device."),
+    mail.wrap,
+    send,
+    code.wrap,
+    go,
+    status,
+    button("BACK", "alt", () => {
+      d.close();
+      back?.();
+    }),
+  );
+  mail.input.focus();
+}
+
+function recoveryDialog({ onPick, back }) {
+  const d = sheet("RECOVERY CODE");
+  const { wrap, input } = codeField("16-CHARACTER CODE", { max: 24, placeholder: "XXXX-XXXX-XXXX-XXXX" });
+  const { status, say } = statusLine();
   const go = async () => {
-    status.textContent = "CHECKING...";
-    status.hidden = false;
+    say("CHECKING...");
     try {
       const p = await joinWithCode(input.value);
       d.close();
       onPick?.(p);
     } catch (e) {
-      status.textContent = errorText(e);
+      say(errorText(e));
     }
   };
   input.addEventListener("keydown", (e) => e.key === "Enter" && go());
   d.card.append(
-    el("p", null, "On a device you already play on, open your player and tap ADD TO ANOTHER DEVICE. Type the code here."),
-    el("p", "ap-note", "Lost every device? Type your 16-character recovery code instead."),
     wrap,
     status,
-    button("ADD PLAYER", "hot", go),
+    button("SIGN IN", "hot", go),
     button("BACK", "alt", () => {
       d.close();
-      chooseWhoIsPlaying({ onPick, closable });
+      back?.();
     }),
   );
   input.focus();
 }
 
+/** Signed-in device: type the code another device shows to sign it in as me. */
+function approveDialog(me, back) {
+  const d = sheet("SIGN IN ANOTHER DEVICE");
+  const { wrap, input } = codeField("CODE ON THE OTHER DEVICE", { max: 4, placeholder: "K7QF" });
+  input.classList.add("ap-bigcode");
+  const { status, say } = statusLine();
+  const go = async () => {
+    if (input.value.replace(/[^A-Za-z0-9]/g, "").length !== 4) return say("TYPE THE 4 CHARACTERS.");
+    say("SIGNING IN...");
+    try {
+      await approveLink(input.value, me.id);
+      say(`DONE! ${me.name} IS PLAYING ON THE OTHER DEVICE NOW.`);
+      input.value = "";
+    } catch (e) {
+      say(errorText(e));
+    }
+  };
+  input.addEventListener("keydown", (e) => e.key === "Enter" && go());
+  d.card.append(
+    el("p", null, `On the new device, tap I PLAY ON ANOTHER DEVICE. Type the code it shows to sign in ${me.name} there.`),
+    wrap,
+    status,
+    button("SIGN IN", "hot", go),
+    button("BACK", "alt", () => {
+      d.close();
+      back();
+    }),
+  );
+  input.focus();
+}
+
+/** Save, change or remove the player's backup email. */
+function emailDialog(me, hint, back) {
+  const d = sheet("BACKUP EMAIL");
+  const mail = emailField(hint ? "NEW EMAIL" : "EMAIL");
+  const code = codeField("CODE FROM THE EMAIL", { max: 6, placeholder: "123456", numeric: true });
+  code.wrap.hidden = true;
+  const { status, say } = statusLine();
+  const save = button("SAVE", "hot", async () => {
+    say("CHECKING...");
+    try {
+      const a = await verifyBackupEmail(code.input.value, me.id);
+      say(`SAVED: ${a.emailHint}. USE IT TO GET ${me.name} BACK ON A NEW DEVICE.`);
+      code.wrap.hidden = true;
+      save.hidden = true;
+    } catch (e) {
+      say(errorText(e));
+    }
+  });
+  save.hidden = true;
+  const send = button("SEND A CODE", hint ? "" : "hot", async () => {
+    say("SENDING...");
+    try {
+      const r = await setBackupEmail(mail.input.value, me.id);
+      say(`CODE SENT TO ${r.hint}. TYPE IT BELOW.`);
+      if (r.devCode) code.input.value = r.devCode; // local development only
+      code.wrap.hidden = false;
+      save.hidden = false;
+      code.input.focus();
+    } catch (e) {
+      say(errorText(e));
+    }
+  });
+  mail.input.addEventListener("keydown", (e) => e.key === "Enter" && send.click());
+  code.input.addEventListener("keydown", (e) => e.key === "Enter" && save.click());
+  d.card.append(
+    el("p", null, hint
+      ? `${me.name}'s backup email is ${hint}.`
+      : `Optional. If you lose this device, a code sent to this email brings ${me.name} back. One email can back up the whole family.`),
+    el("p", "ap-note", "Codemaku keeps only a scrambled copy of the address, never sends anything else."),
+    mail.wrap,
+    send,
+    code.wrap,
+    save,
+    status,
+  );
+  if (hint)
+    d.card.append(
+      button("REMOVE BACKUP EMAIL", "alt", async () => {
+        try {
+          await removeBackupEmail(me.id);
+          d.close();
+          back();
+        } catch (e) {
+          say(errorText(e));
+        }
+      }),
+    );
+  d.card.append(
+    button("BACK", "alt", () => {
+      d.close();
+      back();
+    }),
+  );
+  mail.input.focus();
+}
+
 /**
- * The current player's card: change name or colour, add to another device,
- * save a recovery code, take them off this device, or switch player.
+ * The current player's card: switch, change name or colour, sign in another
+ * device, backup email or recovery code, take them off this device.
  */
 export function showPlayerCard({ onChange } = {}) {
   const me = currentPlayer();
@@ -606,17 +967,21 @@ export function showPlayerCard({ onChange } = {}) {
   const d = sheet("PLAYER");
   const head = el("div", "ap-head");
   head.append(avatarEl(me, 56), el("span", "ap-big", me.name));
-  const info = el("p", "ap-code");
-  info.textContent = "FRIEND CODE: ...";
-  const status = el("p", "ap-status");
-  status.hidden = true;
-  const say = (t) => {
-    status.textContent = t;
-    status.hidden = !t;
-    status.classList.add("ap-select");
-  };
+  const info = el("p", "ap-code", "FRIEND CODE: ...");
+  const { status, say } = statusLine();
+  status.classList.add("ap-select");
+  const reopen = () => showPlayerCard({ onChange });
+  let hint = null;
+  const emailBtn = button("BACKUP EMAIL", "", () => {
+    d.close();
+    emailDialog(me, hint, reopen);
+  });
   fetchAccount(me.id)
-    .then((a) => (info.textContent = `FRIEND CODE: ${a.friendCode}`))
+    .then((a) => {
+      info.textContent = `FRIEND CODE: ${a.friendCode}`;
+      hint = a.emailHint;
+      emailBtn.textContent = hint ? `BACKUP EMAIL: ${hint}` : "ADD A BACKUP EMAIL";
+    })
     .catch(() => (info.textContent = "FRIEND CODE: GO ONLINE TO SEE IT"));
 
   d.card.append(
@@ -631,16 +996,12 @@ export function showPlayerCard({ onChange } = {}) {
       d.close();
       editDialog(me, onChange);
     }),
-    button("ADD TO ANOTHER DEVICE", "", async () => {
-      say("GETTING A CODE...");
-      try {
-        const { code } = await pairCode(me.id);
-        say(`ON THE OTHER DEVICE, TAP "I PLAY ON ANOTHER DEVICE" AND TYPE ${code}. IT WORKS ONCE, FOR 10 MINUTES.`);
-      } catch (e) {
-        say(errorText(e));
-      }
+    button("SIGN IN ANOTHER DEVICE", "", () => {
+      d.close();
+      approveDialog(me, reopen);
     }),
-    button("SAVE A RECOVERY CODE", "", async () => {
+    emailBtn,
+    button("SAVE A RECOVERY CODE", "alt", async () => {
       say("GETTING A CODE...");
       try {
         const code = await recoveryCode(me.id);
@@ -710,6 +1071,20 @@ function trend(stat) {
   return pct === 0 ? "SAME AS BEFORE" : pct > 0 ? `▲ ${pct}% BETTER` : `▼ ${-pct}% WORSE`;
 }
 
+/**
+ * One stat per game: the measure it records each round. A game that once
+ * recorded several measures per round shows only its main one, the measure
+ * played most recently (then the most played).
+ */
+export function perGame(stats) {
+  const by = new Map();
+  for (const s of stats) {
+    const b = by.get(s.game);
+    if (!b || s.lastAt > b.lastAt || (s.lastAt === b.lastAt && s.plays > b.plays)) by.set(s.game, s);
+  }
+  return [...by.values()].sort((a, b) => b.lastAt - a.lastAt);
+}
+
 function statRow(stat, { detail = true } = {}) {
   const row = el("div", "ap-stat");
   row.append(el("b", null, `${label(stat.game)} · ${label(stat.skill)}`));
@@ -737,8 +1112,9 @@ export function showProgress() {
   fetchProgress(me.id)
     .then(({ streak, stats }) => {
       body.replaceChildren(el("p", "ap-streak", streakText(streak)));
-      if (!stats.length) body.append(el("p", null, "No rounds yet. Play a game and your numbers show up here."));
-      for (const s of stats) body.append(statRow(s));
+      const games = perGame(stats);
+      if (!games.length) body.append(el("p", null, "No rounds yet. Play a game and your numbers show up here."));
+      for (const s of games) body.append(statRow(s));
     })
     .catch((e) => body.replaceChildren(el("p", "ap-status", errorText(e))));
   return d;
@@ -786,7 +1162,7 @@ export function showVillage() {
         const row = el("div", "ap-friend");
         row.append(avatarEl(f, 28), el("span", "ap-name", f.name));
         box.append(row, el("span", "ap-streak", streakText(f.streak)));
-        for (const s of (f.stats || []).slice(0, 3)) box.append(statRow(s, { detail: false }));
+        for (const s of perGame(f.stats || []).slice(0, 3)) box.append(statRow(s, { detail: false }));
         body.append(box);
       }
       for (const p of v.outgoing) {
