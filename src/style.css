@@ -481,3 +481,133 @@ input:focus-visible {
   user-select: text;
   -webkit-user-select: text;
 }
+
+/* ---------- players ---------- */
+.arcade-players .ap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.arcade-players .ap-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 6px;
+}
+.arcade-players .ap-pick.on {
+  outline: 3px solid var(--acc);
+  outline-offset: 2px;
+}
+.arcade-players .ap-name,
+.arcade-players .ap-big {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arcade-players .ap-big {
+  font-size: var(--fs-lg);
+  color: var(--acc-t);
+}
+.arcade-players .ap-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.ap-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  color: #1b1230;
+  border: 3px solid #000;
+  box-shadow: 0 3px 0 #000;
+  line-height: 1;
+}
+.arcade-players .ap-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--acc-t);
+}
+.arcade-players .ap-field input {
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--ink);
+  background: var(--well);
+  border: 3px solid #000;
+  padding: 8px;
+  text-transform: uppercase;
+}
+.arcade-players .ap-colors {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+.arcade-players .ap-color {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 3px solid #000;
+  cursor: pointer;
+}
+.arcade-players .ap-color[aria-checked="true"] {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.arcade-players .ap-note,
+.arcade-players .ap-code {
+  font-size: var(--fs-xs);
+  opacity: 0.85;
+}
+.arcade-players .ap-status {
+  font-size: var(--fs-sm);
+  color: var(--acc-t);
+  overflow-wrap: anywhere;
+}
+.arcade-players .ap-select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.arcade-players .ap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.arcade-players .ap-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+  background: var(--well);
+  border: 3px solid var(--line);
+  font-size: var(--fs-xs);
+}
+.arcade-players .ap-stat b {
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  color: var(--acc-t);
+}
+.arcade-players .ap-trend {
+  color: var(--grn-t);
+}
+.arcade-players .ap-trend.down {
+  color: var(--hot-t);
+}
+.arcade-players .ap-streak {
+  font-size: var(--fs-sm);
+  color: var(--hot-t);
+  margin: 0;
+}
+.arcade-players .ap-friend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+.arcade-players .ap-friend .ap-name {
+  flex: 1;
+}

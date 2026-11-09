@@ -39,7 +39,7 @@
   },
   "scripts": {
     "demo": "vite demo",
-    "check": "node --check src/index.js && node --check src/brand.js && node --check src/header.js && node --check src/challenge.js && node --check src/vite.js && node --check src/offline.js && node --check src/offline-sw.js && node --check bin/arcade-obfuscate.mjs",
+    "check": "node --check src/index.js && node --check src/brand.js && node --check src/header.js && node --check src/challenge.js && node --check src/players.js && node --check src/vite.js && node --check src/offline.js && node --check src/offline-sw.js && node --check bin/arcade-obfuscate.mjs",
     "prepublishOnly": "npm run check",
     "release": "changeset publish"
   },

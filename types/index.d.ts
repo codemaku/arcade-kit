@@ -189,3 +189,102 @@ export function offerChallenge(options: {
   title?: string;
   lines?: string[];
 }): ChallengeDialog;
+
+/* ---- players ---- */
+
+/** A player profile on this device. */
+export interface Player {
+  id: string;
+  name: string;
+  /** Index into AVATAR_COLORS. */
+  avatar: number;
+}
+export const AVATAR_COLORS: string[];
+/** Point the kit at the API, e.g. `http://localhost:8787` in development. */
+export function configurePlayers(options: { api?: string }): void;
+export function players(): Player[];
+export function currentPlayer(): Player | null;
+export function setCurrentPlayer(id: string | null): Player | null;
+/** Runs on any change to the players or the current player. Returns an unsubscribe. */
+export function onPlayersChange(fn: (current: Player | null) => void): () => void;
+/** Make a player on this device (works offline) and make them current. */
+export function createPlayer(options?: { name?: string; avatar?: number }): Player;
+export function updatePlayer(id: string, changes: { name?: string; avatar?: number }): Promise<Player | null>;
+/** Take a player off this device. Their account and progress stay on the server. */
+export function removePlayer(id: string): Promise<void>;
+/** Add an existing player with an 8-character pair code or 16-character recovery code. */
+export function joinWithCode(code: string): Promise<Player>;
+
+export interface ResultInput {
+  /** Game slug, e.g. "golf". Lowercase letters, digits, - and _. */
+  game: string;
+  /** What was measured, e.g. "spread". Same rules as `game`. */
+  skill: string;
+  value: number;
+  unit?: string | null;
+  /** Default "higher". */
+  better?: "higher" | "lower";
+  /** Round seed, so same-round results can be compared. */
+  seed?: number;
+  /** Challenge id or tag, when the round came from a challenge link. */
+  challenge?: string;
+}
+/** Save a result for the current player (or `player`) and send it in the background. Returns its id, or null. */
+export function record(result: ResultInput, options?: { player?: string }): string | null;
+/** Results from this game still waiting to be sent. */
+export function unsent(): number;
+/** Register new players and send waiting results. Safe to call any time. */
+export function sync(): Promise<void>;
+
+export interface SkillStat {
+  game: string;
+  skill: string;
+  better: "higher" | "lower";
+  unit: string | null;
+  plays: number;
+  best: number;
+  firstAt?: number;
+  lastAt: number;
+  latest?: number | null;
+  /** [playedAt, value] pairs, oldest first. */
+  recent?: [number, number][];
+}
+export interface Account {
+  id: string;
+  name: string;
+  avatar: number;
+  friendCode: string;
+  hasRecovery: boolean;
+  createdAt: number;
+}
+export function fetchAccount(id?: string): Promise<Account>;
+export function fetchProgress(id?: string): Promise<{ streak: number; stats: SkillStat[] }>;
+export function pairCode(id?: string): Promise<{ code: string; expiresAt: number }>;
+export function recoveryCode(id?: string): Promise<string>;
+
+export interface Friend extends Player {
+  streak?: number;
+  stats?: SkillStat[];
+}
+export function fetchVillage(id?: string): Promise<{ friends: Friend[]; incoming: Player[]; outgoing: Player[] }>;
+export function addFriend(code: string, id?: string): Promise<{ friend: Player; status: "pending" | "accepted" }>;
+export function acceptFriend(friendId: string, id?: string): Promise<{ ok: true }>;
+export function removeFriend(friendId: string, id?: string): Promise<{ ok: true }>;
+
+export interface PlayersDialog {
+  close(): void;
+}
+/** The WHO'S PLAYING? screen. `closable: false` for first launch. */
+export function chooseWhoIsPlaying(options?: {
+  onPick?: (player: Player | null) => void;
+  closable?: boolean;
+  title?: string;
+}): PlayersDialog;
+/** The current player's card: switch, edit, add to another device, recovery code, remove. */
+export function showPlayerCard(options?: { onChange?: (player: Player | null) => void }): void;
+/** A square avatar element: the player's colour with their initial. */
+export function avatarEl(player: Player | null, size?: number): HTMLSpanElement;
+/** The current player's progress screen: streak, then best / last / trend per game and skill. */
+export function showProgress(): PlayersDialog | undefined;
+/** The village screen: friend code, requests, friends' streaks and bests, add by code. */
+export function showVillage(): PlayersDialog | undefined;

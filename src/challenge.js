@@ -7,6 +7,8 @@
  * sent anywhere: the game rebuilds the same round from the seed.
  */
 
+import { currentPlayer } from "./players.js";
+
 const PARAM = "c";
 const NAME_KEY = "arcade_name";
 const NAME_MAX = 12;
@@ -91,8 +93,10 @@ export function challengeURL(data, { param = PARAM, base = location.origin + loc
   return u.href;
 }
 
-/** The player's saved challenge name ("" when none). */
+/** The challenger's name: the current player's, else the saved one ("" when none). */
 export function challengeName() {
+  const me = currentPlayer();
+  if (me?.name) return cleanName(me.name);
   try {
     return cleanName(JSON.parse(localStorage.getItem(NAME_KEY) || '""'));
   } catch {

@@ -228,6 +228,42 @@ function start(ch) {
 - `challengeURL(data)`, `shareLink({ url, text })`, `challengeName()`, `setChallengeName()` are exported too.
 - Escape `ch.n` (`esc`) before putting it in HTML.
 
+### Players: `chooseWhoIsPlaying`, `record`, `fetchProgress`
+
+Console-style players: each device keeps up to 8 profiles and one current
+player, shared by the hub and every game through a `codemaku.com` cookie. No
+email or password: the device makes the account id and token, so players work
+offline and register on the next sync. Results go to the Codemaku API
+(`codemaku/api` repo).
+
+```js
+import { currentPlayer, chooseWhoIsPlaying, showPlayerCard, record, avatarEl,
+  onPlayersChange } from "@codemaku/arcade";
+
+if (!currentPlayer()) chooseWhoIsPlaying({ closable: false, onPick: start });
+
+// At the end of a round, record what the game measures. Queued offline, sent in the background.
+record({ game: "golf", skill: "spread", value: 4.2, unit: "m", better: "lower", seed });
+
+// A player button in the header:
+playerBtn.replaceChildren(avatarEl(currentPlayer(), 20));
+playerBtn.onclick = () => showPlayerCard({ onChange: redraw });
+onPlayersChange(redraw);
+```
+
+- `record()` needs a current player (else returns null). `game` and `skill` are
+  lowercase slugs; pick one `skill` per real measure and keep it stable.
+- `better: "lower"` for golf-style measures; the default is `"higher"`.
+- Pass `seed` for seeded rounds and `challenge` for challenge rounds, so
+  same-round results can be compared.
+- Pass-and-play: `record(result, { player: otherId })` for Player 2.
+- `fetchProgress()` → `{ streak, stats: [{ game, skill, plays, best, latest, recent }] }`.
+- Ready-made screens: `showProgress()` and `showVillage()`.
+- The village: `fetchVillage()`, `addFriend(code)`, `acceptFriend(id)`, `removeFriend(id)`.
+- Results go to `https://codemaku-api.codemaku.workers.dev`. Use
+  `configurePlayers({ api: "http://localhost:8787" })` against a local API in development.
+- `challengeName()` now returns the current player's name when there is one.
+
 ### Brand: `mountBrand`, `brandHTML`, `logoSVG`, `drawLogo`, `HUB_URL`
 
 Every game shows the same lockup, **Title by CODEMAKU**, where CODEMAKU is a
