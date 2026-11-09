@@ -245,3 +245,4 @@ export function registerOffline(options = {}) {
 export * from "./brand.js";
 export * from "./header.js";
 export * from "./challenge.js";
+export * from "./players.js";

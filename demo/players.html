@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Players Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <style>
+      main { height: 100%; overflow: auto; }
+      .wrap { max-width: 560px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      pre { background: var(--well); border: 3px solid var(--line); padding: 10px; font-size: 9px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="wrap">
+        <div class="row"><span id="who"></span></div>
+        <div class="row">
+          <button class="btn hot" id="pick">WHO'S PLAYING?</button>
+          <button class="btn" id="card">PLAYER CARD</button>
+        </div>
+        <div class="row">
+          <button class="btn" id="rec">RECORD A GOLF ROUND</button>
+          <button class="btn alt" id="prog">PROGRESS</button>
+          <button class="btn alt" id="vill">VILLAGE</button>
+        </div>
+        <div class="row">
+          <input id="code" placeholder="FRIEND CODE" style="font: inherit; padding: 8px" />
+          <button class="btn alt" id="friend">ADD FRIEND</button>
+        </div>
+        <pre id="out">-</pre>
+      </div>
+    </main>
+    <script type="module">
+      import "../src/style.css";
+      import {
+        configurePlayers, currentPlayer, chooseWhoIsPlaying, showPlayerCard, onPlayersChange,
+        record, sync, unsent, fetchProgress, fetchVillage, addFriend, avatarEl,
+      } from "../src/index.js";
+
+      configurePlayers({ api: new URLSearchParams(location.search).get("api") || "http://localhost:8787" });
+      const $ = (id) => document.getElementById(id);
+      const show = (x) => ($("out").textContent = typeof x === "string" ? x : JSON.stringify(x, null, 2));
+      const draw = () => {
+        const me = currentPlayer();
+        $("who").replaceChildren(...(me ? [avatarEl(me, 32), ` ${me.name}`] : ["NOBODY"]));
+      };
+      onPlayersChange(draw);
+      draw();
+      if (!currentPlayer()) chooseWhoIsPlaying({ closable: false, onPick: draw });
+
+      $("pick").onclick = () => chooseWhoIsPlaying({ onPick: draw });
+      $("card").onclick = () => showPlayerCard({ onChange: draw });
+      $("rec").onclick = async () => {
+        const id = record({ game: "golf", skill: "spread", value: +(3 + Math.random() * 5).toFixed(1), unit: "m", better: "lower", seed: 42 });
+        show(`recorded ${id}, unsent ${unsent()}`);
+        await sync();
+        show(`recorded ${id}, unsent after sync ${unsent()}`);
+      };
+      $("prog").onclick = async () => show(await fetchProgress().catch((e) => e.message));
+      $("vill").onclick = async () => show(await fetchVillage().catch((e) => e.message));
+      $("friend").onclick = async () => show(await addFriend($("code").value).catch((e) => e.message));
+    </script>
+  </body>
+</html>

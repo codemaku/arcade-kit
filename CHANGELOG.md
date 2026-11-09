@@ -1,5 +1,12 @@
 # @codemaku/arcade
 
+## 0.5.0
+
+### Minor Changes
+
+- Add players: console-style profiles shared across Codemaku sites by a `codemaku.com` cookie, the WHO'S PLAYING? screen, a player card (switch, edit, add to another device with a pair code, recovery code, remove), `record()` with an offline outbox and background sync to the Codemaku API, `fetchProgress()`, and the village (`fetchVillage`, `addFriend`, `acceptFriend`, `removeFriend`). No email or passwords.
+- `challengeName()` returns the current player's name when there is one.
+
 ## 0.4.0
 
 ### Minor Changes
